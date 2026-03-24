@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { useDashboard } from '../context/DashboardContext';
 import {
     LayoutDashboard, AlertTriangle, Activity,
@@ -20,14 +19,7 @@ const NAV = [
 ];
 
 export default function Sidebar() {
-    const location = useLocation();
-    const navigate = useNavigate();
-    
-    // Determine active tab from URL path
-    const active = location.pathname.includes('/resources') ? 'resources' : 
-                   location.pathname.includes('/alerts') ? 'alerts' : 
-                   location.pathname.includes('/analytics') ? 'analytics' : 
-                   location.pathname.includes('/settings') ? 'settings' : 'dashboard';
+    const [active, setActive] = useState('dashboard');
     const { isSidebarOpen } = useDashboard();
     const w = isSidebarOpen ? W_OPEN : W_CLOSED;
 
@@ -68,7 +60,7 @@ export default function Sidebar() {
                     return (
                         <button
                             key={id}
-                            onClick={() => navigate('/' + id)}
+                            onClick={() => setActive(id)}
                             title={!isSidebarOpen ? label : undefined}
                             className="relative flex items-center rounded-xl transition-all duration-200 group"
                             style={{
