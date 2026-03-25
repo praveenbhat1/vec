@@ -1,13 +1,17 @@
 import { useDashboard } from '../../context/DashboardContext';
 import { Truck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
 
 export default function ResourceTrackingPanel() {
     const { resources, getIcon } = useDashboard();
+    const navigate = useNavigate();
 
     return (
         <div className="db-card">
-            <div className="db-card-header">
-                <h2 className="font-bebas tracking-widest text-lg text-slate-100 flex items-center gap-2">
+            <div className="db-card-header cursor-pointer hover:bg-slate-800/40 transition-colors group"
+                 onClick={() => navigate('/resources')}>
+                <h2 className="font-bebas tracking-widest text-lg text-slate-100 flex items-center gap-2 group-hover:text-emerald-400 transition-colors">
                     <Truck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                     Resource Tracking
                 </h2>
@@ -16,6 +20,7 @@ export default function ResourceTrackingPanel() {
                     Live Sync
                 </span>
             </div>
+
 
             <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
                 {resources.map((res) => {
@@ -60,6 +65,19 @@ export default function ResourceTrackingPanel() {
                     );
                 })}
             </div>
+
+            {/* Footer */}
+            <div className="flex-shrink-0 px-5 py-3 border-t" style={{borderColor:'rgba(51,65,85,.5)'}}>
+                <button
+                    onClick={() => navigate('/resources')}
+                    className="font-inter w-full py-2.5 text-xs font-semibold tracking-wider uppercase text-slate-400
+                        hover:text-slate-200 rounded-lg transition-colors border border-dashed border-slate-700/60
+                        hover:border-slate-500 hover:bg-slate-800/40"
+                >
+                    View Full Inventory
+                </button>
+            </div>
         </div>
     );
 }
+

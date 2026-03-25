@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useDashboard } from '../context/DashboardContext';
 import {
     LayoutDashboard, AlertTriangle, Activity,
@@ -11,15 +11,16 @@ const W_OPEN   = 260;
 const H_TOP    = 68;
 
 const NAV = [
-    { id:'dashboard', icon: LayoutDashboard, label:'Dashboard' },
-    { id:'alerts',    icon: AlertTriangle,   label:'Alerts'    },
-    { id:'resources', icon: Database,         label:'Resources' },
-    { id:'analytics', icon: Activity,         label:'Analytics' },
-    { id:'settings',  icon: Settings,         label:'Settings'  },
+    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+    { id: 'alerts',    icon: AlertTriangle,   label: 'Alerts',    path: '/alerts' },
+    { id: 'resources', icon: Database,         label: 'Resources', path: '/resources' },
+    { id: 'analytics', icon: Activity,         label: 'Analytics', path: '/analytics' },
+    { id: 'settings',  icon: Settings,         label: 'Settings',  path: '/settings' },
 ];
 
 export default function Sidebar() {
-    const [active, setActive] = useState('dashboard');
+    const navigate = useNavigate();
+    const location = useLocation();
     const { isSidebarOpen } = useDashboard();
     const w = isSidebarOpen ? W_OPEN : W_CLOSED;
 
@@ -36,7 +37,7 @@ export default function Sidebar() {
             <div className="flex items-center justify-center flex-shrink-0"
                  style={{height: H_TOP, borderBottom:'1px solid rgba(51,65,85,.55)'}}>
                 {isSidebarOpen ? (
-                    <div className="flex items-center gap-2.5 px-5">
+                    <div className="flex items-center gap-2.5 px-5" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                              style={{background:'rgba(239,68,68,.15)', border:'1px solid rgba(239,68,68,.3)'}}>
                             <ShieldAlert className="w-4 h-4 text-red-400" />
@@ -46,7 +47,8 @@ export default function Sidebar() {
                         </span>
                     </div>
                 ) : (
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer"
+                         onClick={() => navigate('/')}
                          style={{background:'rgba(239,68,68,.15)', border:'1px solid rgba(239,68,68,.3)'}}>
                         <ShieldAlert className="w-5 h-5 text-red-400" />
                     </div>
@@ -55,12 +57,12 @@ export default function Sidebar() {
 
             {/* ── Nav items ──────────────────────────────── */}
             <nav className="flex-1 flex flex-col gap-1 p-2.5 mt-1 overflow-hidden">
-                {NAV.map(({ id, icon: Icon, label }) => {
-                    const isActive = active === id;
+                {NAV.map(({ id, icon: Icon, label, path }) => {
+                    const isActive = location.pathname === path;
                     return (
                         <button
                             key={id}
-                            onClick={() => setActive(id)}
+                            onClick={() => navigate(path)}
                             title={!isSidebarOpen ? label : undefined}
                             className="relative flex items-center rounded-xl transition-all duration-200 group"
                             style={{
