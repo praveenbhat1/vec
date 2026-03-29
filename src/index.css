@@ -140,6 +140,32 @@
   .left-sidebar-closed { left: 0; }
 }
 
-/* ── Performance ── */
-.will-change-transform { will-change: transform; }
-.backdrop-blur-md { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+/* ── Performance Critical Optimizations ── */
+.backdrop-blur-3xl, .backdrop-blur-2xl, .backdrop-blur-xl, .backdrop-blur-md {
+  backdrop-filter: blur(24px); /* Fallback */
+  -webkit-backdrop-filter: blur(24px);
+}
+
+/* Disable expensive filters on mobile to fix scroll lag */
+@media (max-width: 768px) {
+  .backdrop-blur-3xl, .backdrop-blur-2xl, .backdrop-blur-xl, .backdrop-blur-md {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: rgba(10, 10, 12, 0.95) !important;
+  }
+}
+
+.will-change-transform {
+  will-change: transform;
+}
+
+/* Fluid Terminal Padding */
+.fluid-p {
+  padding: 1.5rem;
+}
+@media (min-width: 768px) {
+  .fluid-p { padding: 2.5rem; }
+}
+@media (min-width: 1024px) {
+  .fluid-p { padding: 4rem; }
+}

@@ -52,10 +52,11 @@ const LandingPage = () => {
       setMousePos({ x: e.clientX, y: e.clientY });
     };
     
-    // Auto-rotation loop
+    // Optimized Auto-rotation loop (slower on mobile)
+    const isMobile = window.innerWidth < 1024;
     const rotateInterval = setInterval(() => {
-      setRotation(prev => (prev + 0.5) % 360);
-    }, 50);
+      setRotation(prev => (prev + (isMobile ? 0.3 : 0.5)) % 360);
+    }, isMobile ? 100 : 50);
 
     window.addEventListener('scroll', handleScroll);
     window.addEventListener('mousemove', handleMouseMove);

@@ -90,7 +90,7 @@ export default function DashboardMain() {
           height: `calc(100vh - ${SZ.navbarH}px)`,
         }}
       >
-        <div className="max-w-[1920px] mx-auto p-6 md:p-10 lg:p-16">
+        <div className="max-w-[1920px] mx-auto fluid-p">
           
           {/* Functional Dashboard Header */}
           <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between border-b border-white/5 pb-8">
@@ -121,7 +121,7 @@ export default function DashboardMain() {
           </div>
 
           {/* ── Main Workspace Grid ── */}
-          <div className="grid grid-cols-12 gap-10 lg:gap-14">
+          <div className="grid grid-cols-12 gap-6 lg:gap-14">
 
             {/* Workflow: Sticky Top Strip */}
             <div className="col-span-12 animate-slide-up" style={{ animationDelay: '0.1s' }}>
@@ -145,7 +145,7 @@ export default function DashboardMain() {
             </div>
 
             {/* Right Column: Map & Analytics */}
-            <div className="col-span-12 lg:col-span-8 flex flex-col gap-10 lg:gap-14">
+            <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 lg:gap-14">
                <div className="h-[600px] animate-slide-up" style={{ animationDelay: '0.3s' }}>
                   <PanelContainer label="REALTIME_GEOSPATIAL_INTEL" accent="#3b82f6" status="LIVE">
                     <MapPanel />
