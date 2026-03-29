@@ -85,14 +85,55 @@ const LandingPage = () => {
         <div className="absolute inset-0 opacity-[0.03] contrast-150 brightness-150 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
       </div>
 
+      {/* ── MOBILE MENU OVERLAY ── */}
+      <div className={`
+        fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl transition-all duration-500 lg:hidden
+        ${mobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'}
+      `}>
+        <div className="flex flex-col h-full p-8">
+           <div className="flex justify-between items-center mb-12">
+              <div className="flex items-center gap-4">
+                <Shield className="w-8 h-8 text-[#00FFCC]" />
+                <span className="font-outfit font-black text-xl tracking-tighter uppercase">CRISISCHAIN</span>
+              </div>
+              <button onClick={() => setMobileMenuOpen(false)} className="w-12 h-12 flex items-center justify-center bg-white/5 rounded-full border border-white/10">
+                <X className="w-6 h-6 text-white" />
+              </button>
+           </div>
+           
+           <div className="flex flex-col gap-8 flex-1 justify-center">
+              <Link to="/report" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-outfit font-black uppercase tracking-tighter text-red-500 flex items-center gap-6 group">
+                <div className="w-1 h-12 bg-red-500 scale-y-0 group-hover:scale-y-100 transition-transform origin-top" />
+                REPORT_EMERGENCY
+              </Link>
+              <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-outfit font-black uppercase tracking-tighter text-blue-400 flex items-center gap-6 group">
+                <div className="w-1 h-12 bg-blue-500 scale-y-0 group-hover:scale-y-100 transition-transform origin-top" />
+                COMMAND_CENTER
+              </Link>
+              <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-outfit font-black uppercase tracking-tighter text-white/40 flex items-center gap-6 group">
+                <div className="w-1 h-12 bg-white/40 scale-y-0 group-hover:scale-y-100 transition-transform origin-top" />
+                AGENCY_LOGIN
+              </Link>
+              <Link to="/register" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-outfit font-black uppercase tracking-tighter text-white/40 flex items-center gap-6 group">
+                <div className="w-1 h-12 bg-white/40 scale-y-0 group-hover:scale-y-100 transition-transform origin-top" />
+                NEW_AGENCY_AUTH
+              </Link>
+           </div>
+
+           <div className="p-8 border-t border-white/5 flex flex-col gap-4">
+              <div className="text-[10px] font-mono text-white/20 tracking-[0.4em] uppercase text-center">Planetary_Control_Node_Active</div>
+           </div>
+        </div>
+      </div>
+
       {/* ── NAV BAR (GLASS) ── */}
       <nav 
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 ${
-          scrolled ? 'bg-black/20 backdrop-blur-3xl border-b border-white/5 py-3' : 'bg-transparent py-8'
+          scrolled ? 'bg-black/20 backdrop-blur-3xl border-b border-white/5 py-4' : 'bg-transparent py-8'
         }`}
       >
-        <div className="max-w-[1400px] mx-auto px-8 flex items-center justify-between">
-          <div className="flex items-center gap-4 group cursor-pointer">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-8 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-4 group cursor-pointer">
             <div className="w-10 h-10 bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center group-hover:border-[#00FFCC]/40 transition-all duration-500">
               <Shield className="w-5 h-5 text-[#00FFCC] group-hover:scale-110 transition-transform" />
             </div>
@@ -100,7 +141,7 @@ const LandingPage = () => {
               <span className="font-outfit font-black text-xl tracking-tighter uppercase">CRISISCHAIN</span>
               <span className="text-[9px] font-mono text-blue-400 tracking-[0.4em] opacity-60">TACTICAL_CONTROL_v5.4</span>
             </div>
-          </div>
+          </Link>
 
           <div className="hidden lg:flex items-center gap-12 text-[9px] font-mono uppercase tracking-[0.4em] font-bold text-white/40">
             <div className="flex items-center gap-2 text-blue-400">
@@ -112,11 +153,14 @@ const LandingPage = () => {
                INCIDENT FEED ACTIVE
             </div>
             <div className="h-4 w-[1px] bg-white/10 mx-4" />
-            <Link to="/login" className="px-6 py-2 border border-blue-500/30 hover:bg-blue-500/10 bg-white/5 backdrop-blur-xl transition-all text-blue-400">AGENCY_LOGIN</Link>
+            <Link to="/login" className="px-6 py-2 border border-blue-500/30 hover:bg-blue-500/10 bg-white/5 backdrop-blur-xl transition-all text-blue-400 hover:text-white">AGENCY_LOGIN</Link>
           </div>
 
-          <button className="lg:hidden text-white/60" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-            {mobileMenuOpen ? <X /> : <Menu />}
+          <button 
+            className="lg:hidden w-10 h-10 flex items-center justify-center bg-white/5 border border-white/10" 
+            onClick={() => setMobileMenuOpen(true)}
+          >
+            <Menu className="w-5 h-5 text-white/60" />
           </button>
         </div>
       </nav>
@@ -132,7 +176,7 @@ const LandingPage = () => {
               <span className="text-[9px] font-mono tracking-[0.5em] text-[#00FFCC] uppercase">Planetary Crisis Orchestration</span>
             </div>
             
-            <h1 className="font-outfit text-[6vw] lg:text-[100px] font-black leading-[0.85] tracking-tighter mb-12 animate-slide-up text-white">
+            <h1 className="font-outfit text-5xl md:text-7xl lg:text-[100px] font-black leading-[0.85] tracking-tighter mb-12 animate-slide-up text-white">
               REAL-TIME <br />
               <span className="text-white/10 stroke-text outline-white/20">DISASTER</span> <br />
               <span className="bg-gradient-to-r from-[#00FFCC] via-white to-white/40 bg-clip-text text-transparent italic">COORDINATION</span>
@@ -162,7 +206,7 @@ const LandingPage = () => {
           </div>
 
           {/* Right Floating Intelligence */}
-          <div className="lg:col-span-5 h-[750px] relative mt-12 lg:mt-0 animate-fade-in" style={{ animationDelay: '0.6s' }}>
+          <div className="lg:col-span-5 h-[450px] md:h-[600px] lg:h-[750px] relative mt-12 lg:mt-0 animate-fade-in" style={{ animationDelay: '0.6s' }}>
             <div className="absolute inset-0 bg-blue-600/[0.02] backdrop-blur-3xl border border-white/10 rounded-[40px] flex items-center justify-center overflow-hidden">
                {/* Radar Sweep Effect */}
                <div className="absolute inset-0 opacity-20 pointer-events-none">
@@ -170,29 +214,29 @@ const LandingPage = () => {
                </div>
 
                {/* UI Overlays */}
-               <div className="absolute top-10 left-10 p-6 bg-black/40 border border-blue-500/20 backdrop-blur-3xl z-40 max-w-[200px]">
-                  <div className="text-[10px] font-mono text-blue-400 uppercase mb-4 flex items-center gap-2">
+               <div className="absolute top-5 left-5 lg:top-10 lg:left-10 p-4 lg:p-6 bg-black/40 border border-blue-500/20 backdrop-blur-3xl z-40 max-w-[150px] lg:max-w-[200px]">
+                  <div className="text-[8px] lg:text-[10px] font-mono text-blue-400 uppercase mb-4 flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
                     Live_Telemetry
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-3 lg:space-y-4">
                     <div className="flex justify-between items-end border-b border-white/5 pb-2">
-                      <span className="text-[8px] font-mono text-white/40">LATENCY</span>
-                      <span className="text-xs font-outfit text-white">12MS</span>
+                      <span className="text-[7px] lg:text-[8px] font-mono text-white/40">LATENCY</span>
+                      <span className="text-[10px] lg:text-xs font-outfit text-white">12MS</span>
                     </div>
                     <div className="flex justify-between items-end border-b border-white/5 pb-2">
-                      <span className="text-[8px] font-mono text-white/40">NODES</span>
-                      <span className="text-xs font-outfit text-white">405 ACTIVE</span>
+                      <span className="text-[7px] lg:text-[8px] font-mono text-white/40">NODES</span>
+                      <span className="text-[10px] lg:text-xs font-outfit text-white">405 ACTIVE</span>
                     </div>
                   </div>
                </div>
 
-               <div className="absolute bottom-10 right-10 p-6 bg-black/40 border border-red-500/20 backdrop-blur-3xl z-40 max-w-[240px]">
-                  <div className="text-[10px] font-mono text-red-400 uppercase mb-4 flex items-center gap-2">
+               <div className="absolute bottom-5 right-5 lg:bottom-10 lg:right-10 p-4 lg:p-6 bg-black/40 border border-red-500/20 backdrop-blur-3xl z-40 max-w-[180px] lg:max-w-[240px]">
+                  <div className="text-[8px] lg:text-[10px] font-mono text-red-400 uppercase mb-4 flex items-center gap-2">
                     <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                     CRITICAL_ALERTS
                   </div>
-                  <div className="space-y-4 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="space-y-4 max-h-[120px] lg:max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
                     {incidents.filter(i => i.type === 'CRITICAL' || i.type === 'LIVE').map((inc, i) => (
                       <div key={i} className="group cursor-pointer hover:bg-white/5 p-2 transition-all">
                         <div className="text-[8px] font-mono text-red-500 mb-1">{inc.time.toUpperCase()}</div>
@@ -204,17 +248,17 @@ const LandingPage = () => {
 
                {/* BIG Globe Node */}
                <div 
-                  className={`relative cursor-crosshair transition-all duration-700 ${isZoomed ? 'scale-150' : 'scale-110'}`}
+                  className={`relative cursor-crosshair transition-all duration-700 ${isZoomed ? 'scale-125 lg:scale-150' : 'scale-90 lg:scale-110'}`}
                   onClick={() => setIsZoomed(!isZoomed)}
                >
-                  <div className="absolute inset-[-60px] border border-blue-500/10 rounded-full animate-spin-slow" />
-                  <div className="absolute inset-[-20px] border border-white/5 rounded-full animate-reverse-spin" />
-                  <div className="absolute inset-0 bg-blue-500/5 rounded-full blur-3xl" />
+                  <div className="absolute inset-[-40px] lg:inset-[-60px] border border-blue-500/10 rounded-full animate-spin-slow" />
+                  <div className="absolute inset-[-15px] lg:inset-[-20px] border border-white/5 rounded-full animate-reverse-spin" />
+                  <div className="absolute inset-0 bg-blue-500/5 rounded-full blur-3xl opacity-50" />
                   
-                  <div className="w-[450px] h-[450px] relative z-20">
+                  <div className="w-[300px] h-[300px] lg:w-[450px] lg:h-[450px] relative z-20">
                     <ComposableMap 
                       projection="geoOrthographic" 
-                      projectionConfig={{ rotate: [rotation, -15, 0], scale: 160 }}
+                      projectionConfig={{ rotate: [rotation, -15, 0], scale: 120 }}
                       className="w-full h-full opacity-90 drop-shadow-[0_0_20px_rgba(59,130,246,0.2)]"
                     >
                       <Geographies geography={geoUrl}>

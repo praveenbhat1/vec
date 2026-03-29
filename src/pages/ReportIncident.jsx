@@ -163,11 +163,11 @@ export default function ReportIncident() {
           
           <div className="mb-20 text-center">
              <span className="text-[10px] font-mono text-red-500 tracking-[0.8em] uppercase block mb-6 animate-pulse">Critical_Intake_Mode</span>
-             <h1 className="font-outfit text-6xl md:text-[80px] font-black leading-[0.85] tracking-tighter uppercase mb-6">
+             <h1 className="font-outfit text-5xl md:text-[80px] font-black leading-[0.85] tracking-tighter uppercase mb-6">
                REPORT_AN<br />
                <span className="text-white/10 stroke-text outline-white/20">INCIDENT</span>
              </h1>
-             <p className="text-white/40 text-xl font-light max-w-2xl mx-auto uppercase tracking-wide">
+             <p className="text-white/40 text-lg md:text-xl font-light max-w-2xl mx-auto uppercase tracking-wide">
                Initialize tactical feed. Immediate deployment across all available nodes.
              </p>
           </div>

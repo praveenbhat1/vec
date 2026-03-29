@@ -80,7 +80,7 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#08080A] text-[#E5E5E7] font-inter overflow-hidden flex selection:bg-[#00FFCC] selection:text-black">
+    <div className="min-h-screen bg-[#08080A] text-[#E5E5E7] font-inter overflow-y-auto flex selection:bg-[#00FFCC] selection:text-black">
       
       {/* ── AMBIENT MESH BACKGROUND ── */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
