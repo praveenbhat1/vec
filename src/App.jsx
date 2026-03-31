@@ -9,6 +9,7 @@ const ResourceInventory = lazy(() => import('./pages/ResourceInventory'));
 const LoginPage         = lazy(() => import('./pages/LoginPage'));
 const SignUpPage        = lazy(() => import('./pages/SignUpPage'));
 const ReportIncident    = lazy(() => import('./pages/ReportIncident'));
+const Alerts            = lazy(() => import('./pages/Alerts'));
 
 function SuspenseFallback() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/dashboard" element={<DashboardProvider><DashboardMain /></DashboardProvider>} />
           <Route path="/resources" element={<DashboardProvider><ResourceInventory /></DashboardProvider>} />
+          <Route path="/alerts"    element={<Alerts />} />
           <Route path="/login"    element={<LoginPage />} />
           <Route path="/register" element={<SignUpPage />} />
           <Route path="/report"   element={<ReportIncident />} />
