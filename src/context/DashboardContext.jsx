@@ -1,17 +1,26 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { AlertCircle, Waves, Wind, Flame, HeartPulse, Truck, Users, MessageSquare, AlertTriangle, ClipboardCheck, Siren, HeartHandshake } from 'lucide-react';
+import { AlertCircle, Waves, Wind, Flame, HeartPulse, Truck, Users, MessageSquare, AlertTriangle, ClipboardCheck, Siren, HeartHandshake, Droplets, Shield, Radiation, Activity, MapPin } from 'lucide-react';
+import * as api from '../api/index.js';
 
 const DashboardContext = createContext();
 
 export function DashboardProvider({ children }) {
     // --- STATE INITIALIZATION ---
+    const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
     const [alerts, setAlerts] = useState([
-        { id: 1, type: 'Cyclone', location: 'Coastal Sector 4', time: '2 mins ago', critical: true, iconName: 'Wind' },
-        { id: 2, type: 'Flood Warning', location: 'River Valley Area', time: '14 mins ago', critical: true, iconName: 'Waves' },
-        { id: 3, type: 'Wildfire', location: 'Northern Ridge', time: '1 hr ago', critical: false, iconName: 'Flame' },
-        { id: 4, type: 'Structural Collapse', location: 'Downtown Block B', time: '3 hrs ago', critical: false, iconName: 'AlertCircle' },
+        { id: 1, type: 'fire', location: 'San Francisco, CA', severity: 'high', description: 'Structural fire reported in Sector 4.', time: '2m ago', iconName: 'Flame', critical: true, status: 'Active' },
+        { id: 2, type: 'flood', location: 'Miami, FL', severity: 'medium', description: 'Rising water levels in coastal areas.', time: '10m ago', iconName: 'Droplets', critical: false, status: 'Pending' },
+        { id: 3, type: 'medical', location: 'Austin, TX', severity: 'high', description: 'Mass casualty exercise / hospital influx.', time: 'Just now', iconName: 'HeartPulse', critical: true, status: 'Dispatched' },
     ]);
-
+    const [resources, setResources] = useState([
+        { id: 1, name: 'Bravo Team (Fire)', type: 'Emergency', status: 'Available', deployed: false, iconName: 'Flame' },
+        { id: 2, name: 'Medic-4 Unit', type: 'Medical', status: 'En Route', deployed: true, iconName: 'HeartPulse' },
+        { id: 3, name: 'Logistics Drone', type: 'Support', status: 'Available', deployed: false, iconName: 'Activity' },
+    ]);
+    const [stats, setStats] = useState({ total: 124, active: 12, resolved: 112, avgResponseTime: 4.2 });
+    const [trends, setTrends] = useState([]);
+    
+    // Mock logic for visuals that aren't fully in backend yet
     const [actions, setActions] = useState([
         { id: 1, title: 'Evacuate Sector 4', priority: 'High', source: 'Weather API', time: 'Just now' },
         { id: 2, title: 'Deploy Bravo Team', priority: 'High', source: 'Ground Cmd', time: '5m ago' },
@@ -19,25 +28,77 @@ export function DashboardProvider({ children }) {
     ]);
 
     const [messages, setMessages] = useState([
-        { id: 1, sender: 'Alpha Team', text: 'Arrived at Downtown Block B. Assessing structural damage.', time: '10:42 AM', status: 'Active' },
-        { id: 2, sender: 'HQ Command', text: 'Evacuation orders issued for Coastal Sector 4. Proceed immediately.', time: '10:40 AM', status: 'Critical' },
-        { id: 3, sender: 'Medevac Unit 3', text: 'Transporting 5 casualties to City Central Hospital. ETA 15 mins.', time: '10:35 AM', status: 'Active' },
-        { id: 4, sender: 'Sensor Grid Area 51', text: 'Water levels rising by 2 feet/hour near River Valley.', time: '10:30 AM', status: 'Warning' },
+        { id: 1, sender: 'HQ Command', text: 'System Online. Establishing secure comms uplink.', time: '10:40 AM', status: 'Active' },
     ]);
 
-    const [resources, setResources] = useState([
-        { id: 1, name: 'Ambulances', iconName: 'HeartPulse', count: 24, total: 30, color: 'text-red-500', bg: 'bg-red-500' },
-        { id: 2, name: 'Fire Trucks', iconName: 'Flame', count: 18, total: 20, color: 'text-orange-500', bg: 'bg-orange-500' },
-        { id: 3, name: 'Rescue Teams', iconName: 'Users', count: 12, total: 15, color: 'text-blue-500', bg: 'bg-blue-500' },
-        { id: 4, name: 'Supply Trucks', iconName: 'Truck', count: 8, total: 10, color: 'text-emerald-500', bg: 'bg-emerald-500' },
-    ]);
-
-    const [workflowId, setWorkflowId] = useState(2); // 1 to 4
+    const [workflowId, setWorkflowId] = useState(2); 
     const [toasts, setToasts] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // --- FETCH DATA (MAPPED TO MOCK FOR NOW) ---
+    const refreshData = async () => {
+        // Skipping real API calls as requested to bypass backend dependency
+        // In a real app, this would be: await api.fetchAlerts()...
+    };
+
+    useEffect(() => {
+        // No-op for now to keep the UI stable without server connection
+    }, []);
+
+    // --- HELPERS ---
+    const getIconName = (type) => {
+        if (type === 'fire') return 'Flame';
+        if (type === 'flood') return 'Droplets';
+        if (type === 'medical') return 'HeartPulse';
+        if (type === 'accident') return 'AlertTriangle';
+        return 'AlertCircle';
+    };
+
+    const getIconByName = (name) => {
+        if (name.includes('Fire')) return 'Flame';
+        if (name.includes('Ambulance')) return 'HeartPulse';
+        if (name.includes('Boat')) return 'Droplets';
+        if (name.includes('Drone')) return 'Zap';
+        return 'Activity';
+    };
+
+    const login = async (formData) => {
+        // SIMULATED LOGIN FOR NO-BACKEND MODE
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                const mockUser = { id: 'mock-1', name: 'Commander Apex', email: formData.email, role: 'admin' };
+                localStorage.setItem('user', JSON.stringify(mockUser));
+                localStorage.setItem('token', 'mock_token_123');
+                setUser(mockUser);
+                addToast('Session Initialized: Welcome Back', 'success');
+                resolve(mockUser);
+            }, 300);
+        });
+    };
+
+    const signup = async (formData) => {
+        // SIMULATED SIGNUP FOR NO-BACKEND MODE
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                const mockUser = { id: 'mock-2', name: formData.name, email: formData.email, role: formData.role || 'citizen' };
+                localStorage.setItem('user', JSON.stringify(mockUser));
+                localStorage.setItem('token', 'mock_token_123');
+                setUser(mockUser);
+                addToast('Registration Successful', 'success');
+                resolve(mockUser);
+            }, 300);
+        });
+    };
+
+    const logout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
+        addToast('Session Terminated', 'info');
+    };
 
     // --- ACTIONS ---
     const toggleSidebar = () => setIsSidebarOpen(prev => !prev);
@@ -52,20 +113,24 @@ export function DashboardProvider({ children }) {
         }, 4000);
     };
 
-    const acknowledgeAction = (id) => {
-        setActions(prev => prev.filter(a => a.id !== id));
-        addMessage('System', `Action item acknowledged and cleared.`, 'Resolved');
-        addToast('Action Acknowledged', 'success');
+    const addAlert = async (alertData) => {
+        const newAlert = {
+            ...alertData,
+            id: Date.now(),
+            time: 'Just now',
+            iconName: getIconName(alertData.type),
+            critical: alertData.severity === 'high' || alertData.severity === 'critical',
+            status: 'Active'
+        };
+        setAlerts(prev => [newAlert, ...prev]);
+        setStats(prev => ({ ...prev, total: prev.total + 1, active: prev.active + 1 }));
+        addToast(`Emergency Logged Locally: ${alertData.type}`, newAlert.critical ? 'error' : 'info');
+        return newAlert;
     };
 
-    const escalateAction = (actionId) => {
-        const action = actions.find(a => a.id === actionId);
-        if (action) {
-            setActions(prev => prev.filter(a => a.id !== actionId));
-            addAlert(action.title, 'Escalated from pending.', true, 'AlertCircle');
-            addMessage('Commander', `ESCALATED: ${action.title}. Immediate action required.`, 'Critical');
-            addToast('Action Escalated to Critical', 'error');
-        }
+    const updateStatus = async (id, status) => {
+        setAlerts(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+        addToast(`Alert status updated to ${status} (Local)`, 'success');
     };
 
     const addMessage = (sender, text, status = 'Active') => {
@@ -79,18 +144,6 @@ export function DashboardProvider({ children }) {
         setMessages(prev => [newMsg, ...prev]);
     };
 
-    const addAlert = (type, location, critical, iconName = 'AlertCircle') => {
-        const newAlert = {
-            id: Date.now(),
-            type,
-            location,
-            time: 'Just now',
-            critical,
-            iconName
-        };
-        setAlerts(prev => [newAlert, ...prev]);
-    };
-
     const advanceWorkflow = () => {
         if (workflowId < 4) {
             setWorkflowId(workflowId + 1);
@@ -99,35 +152,19 @@ export function DashboardProvider({ children }) {
     };
 
     const getIcon = (name) => {
-        const icons = { AlertCircle, Waves, Wind, Flame, HeartPulse, Truck, Users };
+        const icons = { 
+            AlertCircle, Waves, Wind, Flame, HeartPulse, Truck, Users, 
+            Droplets, Shield, Radiation, Activity, MapPin, AlertTriangle, Siren, HeartHandshake, ClipboardCheck
+        };
         return icons[name] || AlertCircle;
     };
 
-    // --- SIMULATION (Fake live incoming data) ---
-    useEffect(() => {
-        const interval = setInterval(() => {
-            // Randomly update resource counts down or up slightly
-            setResources(prev => prev.map(res => {
-                // 10% chance to change a resource
-                if (Math.random() > 0.9) {
-                    let change = Math.random() > 0.5 ? 1 : -1;
-                    let newCount = res.count + change;
-                    if (newCount < 0) newCount = 0;
-                    if (newCount > res.total) newCount = res.total;
-                    return { ...res, count: newCount };
-                }
-                return res;
-            }));
-        }, 5000);
-        return () => clearInterval(interval);
-    }, []);
-
     return (
         <DashboardContext.Provider value={{
-            alerts, actions, messages, resources, workflowId, toasts,
+            user, alerts, actions, messages, resources, stats, workflowId, toasts,
             isSidebarOpen, isMobileMenuOpen, toggleSidebar, closeSidebar, toggleMobileMenu,
-            acknowledgeAction, escalateAction, addMessage, addAlert, advanceWorkflow,
-            getIcon, searchQuery, setSearchQuery, addToast
+            login, signup, logout, addMessage, addAlert, updateStatus, advanceWorkflow,
+            getIcon, searchQuery, setSearchQuery, addToast, refreshData
         }}>
             {children}
         </DashboardContext.Provider>

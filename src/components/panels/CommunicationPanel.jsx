@@ -11,7 +11,7 @@ export default function CommunicationPanel() {
 
     const handleSend = (e) => {
         e.preventDefault();
-        if (input.trim()) { addMessage('Commander', input.trim(), 'Active'); setInput(''); }
+        if (input.trim()) { addMessage('Alex', input.trim(), 'Active'); setInput(''); }
     };
 
     return (
@@ -25,9 +25,9 @@ export default function CommunicationPanel() {
                         <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_#10b981]" />
                     </div>
                     <div>
-                        <h4 className="font-outfit font-black text-xl tracking-tight text-white uppercase leading-none mb-1">COMMS_ARRAY</h4>
+                        <h4 className="font-outfit font-black text-xl tracking-tight text-white uppercase leading-none mb-1">TEAM CHAT</h4>
                         <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-white/30 uppercase flex items-center gap-2">
-                           <Lock className="w-3 h-3" /> E2E_ENCRYPTED_UPLINK
+                           <Lock className="w-3 h-3" /> SECURE CHANNEL
                         </p>
                     </div>
                 </div>
@@ -48,16 +48,16 @@ export default function CommunicationPanel() {
                 {filtered.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-full gap-6 opacity-10">
                         <Terminal className="w-12 h-12" />
-                        <span className="font-mono text-[10px] font-black tracking-[0.5em] uppercase">NO_SIGNAL_DETECTED</span>
+                        <span className="font-mono text-[10px] font-black tracking-[0.5em] uppercase">NO MESSAGES</span>
                     </div>
                 )}
                 {filtered.map(msg => (
                     <div key={msg.id} className="group/msg px-10 py-8 hover:bg-white/[0.02] transition-colors relative">
                         <div className="flex items-start justify-between gap-6 mb-4">
                             <div className="flex items-center gap-4">
-                               <div className={`w-1 h-6 ${msg.sender === 'Commander' ? 'bg-purple-500' : 'bg-blue-500'}`} />
+                               <div className={`w-1 h-6 ${msg.sender === 'Alex' ? 'bg-purple-500' : 'bg-blue-500'}`} />
                                <span className={`font-outfit font-black text-sm tracking-tight uppercase transition-all group-hover/msg:translate-x-1
-                                   ${msg.sender === 'Commander' ? 'text-purple-400' : 'text-blue-400'}`}>
+                                   ${msg.sender === 'Alex' ? 'text-purple-400' : 'text-blue-400'}`}>
                                    {msg.sender}
                                </span>
                             </div>
@@ -83,12 +83,12 @@ export default function CommunicationPanel() {
                 <div className="relative group/input">
                     <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
                          <Terminal className="w-4 h-4 text-emerald-500/40" />
-                         <span className="text-[9px] font-mono text-emerald-500/20 font-black tracking-widest group-focus-within/input:text-emerald-500/60 transition-colors uppercase">CMD_INPUT:</span>
+                         <span className="text-[9px] font-mono text-emerald-500/20 font-black tracking-widest group-focus-within/input:text-emerald-500/60 transition-colors uppercase">MESSAGE:</span>
                     </div>
                     <input
                         type="text" value={input}
                         onChange={e => setInput(e.target.value)}
-                        placeholder="INPUT_UPLINK_COMMAND..."
+                        placeholder="TYPE A MESSAGE..."
                         className="font-mono w-full bg-white/[0.02] border border-white/5 focus:border-[#00FFCC]/40 focus:bg-[#00FFCC]/[0.02] pl-36 pr-20 py-5 text-[11px] font-black tracking-widest text-[#00FFCC] placeholder-white/5 outline-none transition-all duration-700 uppercase"
                     />
                     <button type="submit"

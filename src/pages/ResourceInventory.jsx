@@ -180,12 +180,12 @@ export default function ResourceInventory() {
                     <div className="mb-12 animate-fade-in">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="h-[1px] w-8 bg-[#00FFCC]/40" />
-                            <span className="text-[10px] font-mono tracking-[0.6em] text-[#00FFCC] uppercase">Resource_Intelligence_Annex</span>
+                            <span className="text-[10px] font-mono tracking-[0.6em] text-[#00FFCC] uppercase">Resource_Inventory_Summary</span>
                         </div>
                         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
                            <h1 className="font-outfit text-5xl lg:text-7xl font-black tracking-tighter uppercase leading-none">
-                             SATELLITE<br />
-                             <span className="bg-gradient-to-r from-[#00FFCC] via-white to-white/40 bg-clip-text text-transparent italic">LOGISTICS_HUB</span>
+                             RESOURCE<br />
+                             <span className="bg-gradient-to-r from-[#00FFCC] via-white to-white/40 bg-clip-text text-transparent italic">HUB</span>
                            </h1>
                            
                            {activeTab === 'supplies' && (
@@ -202,8 +202,8 @@ export default function ResourceInventory() {
                     {/* Tab Navigation */}
                     <div className="flex gap-4 mb-12 overflow-x-auto no-scrollbar pb-2">
                         {[
-                            { id: 'supplies', label: 'NGO_SUPPLY_GRID', icon: Package },
-                            { id: 'hospitals', label: 'FACILITY_STATUS', icon: Hospital },
+                            { id: 'supplies', label: 'STOCK_OVERVIEW', icon: Package },
+                            { id: 'hospitals', label: 'FACILITY_CAPACITY', icon: Hospital },
                             { id: 'fleet', label: 'LOGISTICS_FLEET', icon: Truck },
                         ].map((tab) => {
                             const isActive = activeTab === tab.id;
@@ -230,7 +230,7 @@ export default function ResourceInventory() {
                                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-[#00FFCC] transition-colors" />
                                     <input
                                         type="text"
-                                        placeholder="SCAN_SUPPLY_IDENTIFIER..."
+                                        placeholder="SEARCH_INVENTORY..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         className="w-full bg-white/5 border border-white/5 px-16 py-6 font-mono text-sm tracking-widest focus:outline-none focus:border-[#00FFCC]/20 transition-all text-white placeholder:text-white/10 uppercase"
@@ -241,10 +241,10 @@ export default function ResourceInventory() {
                                     <table className="w-full text-left border-collapse min-w-[800px]">
                                         <thead>
                                             <tr className="border-b border-white/5 font-mono text-white/20 text-[10px] tracking-[0.4em] uppercase">
-                                                <th className="px-8 py-6 font-normal">ASSET_IDENTIFIER</th>
-                                                <th className="px-8 py-6 font-normal">VOLUMETRIC_DATA</th>
-                                                <th className="px-8 py-6 font-normal">CURRENT_LOCALITY</th>
-                                                <th className="px-8 py-6 font-normal text-right">STATUS_VERIFICATION</th>
+                                                <th className="px-8 py-6 font-normal">ITEM_NAME / ID</th>
+                                                <th className="px-8 py-6 font-normal">QUANTITY</th>
+                                                <th className="px-8 py-6 font-normal">LOCATION</th>
+                                                <th className="px-8 py-6 font-normal text-right">STATUS</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -343,7 +343,7 @@ export default function ResourceInventory() {
                                 <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-[#00FFCC] transition-colors" />
                                 <input
                                     type="text"
-                                    placeholder="SCAN_MEDICAL_NODES..."
+                                    placeholder="SEARCH_HOSPITALS..."
                                     value={hospitalSearch}
                                     onChange={(e) => setHospitalSearch(e.target.value)}
                                     className="w-full bg-white/5 border border-white/5 px-16 py-6 font-mono text-sm tracking-widest focus:outline-none focus:border-[#00FFCC]/20 transition-all text-white placeholder:text-white/10 uppercase"
@@ -400,7 +400,7 @@ export default function ResourceInventory() {
 
                                                 <div className="bg-white/[0.03] p-6 border border-white/5">
                                                     <p className="text-[9px] font-mono text-white/30 uppercase tracking-[0.2em] mb-4 font-bold flex items-center gap-3">
-                                                        <Zap className="w-3.5 h-3.5 text-blue-400" /> CORTEX_INV
+                                                        <Zap className="w-3.5 h-3.5 text-blue-400" /> EMERGENCY_STOCK
                                                     </p>
                                                     <div className="space-y-2">
                                                         <div className="flex justify-between items-center">

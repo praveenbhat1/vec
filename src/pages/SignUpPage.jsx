@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useDashboard } from '../context/DashboardContext';
 import { 
   Shield, 
   User, 
@@ -21,9 +22,9 @@ import {
 
 const ROLES = ['Civilian / Victim', 'First Responder', 'NGO / Aid Worker', 'Government Official', 'Media / Press'];
 const FEATURES = [
-  { icon: Globe, label: 'GLOBAL_OBSERVATION', desc: 'Satellite-linked real-time surveillance across all tectonic and atmospheric sectors.' },
-  { icon: Zap, label: 'INSTANT_TRIAGE', desc: 'AI-driven threat assessment protocols bypass human latency for immediate responder deployment.' },
-  { icon: Shield, label: 'SECURE_CHNL', desc: 'Military-grade 256-bit encryption for all tactical communications and data exchanges.' },
+  { icon: Globe, label: 'GLOBAL COVERAGE', desc: 'Secure real-time observation across all geographical and atmospheric sectors.' },
+  { icon: Zap, label: 'INSTANT RESPONSE', desc: 'AI-driven assessment protocols ensure immediate resource deployment for critical incidents.' },
+  { icon: Shield, label: 'SECURE NETWORK', desc: 'Encrypted communication channels protecting all strategic data and field coordination.' },
 ];
 
 function pwStrength(pw) {
@@ -37,10 +38,11 @@ function pwStrength(pw) {
 }
 
 const STR_COLOR = ['', '#ef4444', '#f97316', '#eab308', '#00FFCC'];
-const STR_LABEL = ['', 'CRITICAL_WEAKNESS', 'MARGINAL_SECURITY', 'OPTIMAL_STRENGTH', 'FORTIFIED_ENCRYPTION'];
+const STR_LABEL = ['', 'WEAK SECURITY', 'MODERATE PROTECTION', 'STRONG SECURITY', 'MAXIMUM PROTECTION'];
 
 export default function SignUpPage() {
   const nav = useNavigate();
+  const { signup } = useDashboard();
   const [form, setForm] = useState({ name: '', email: '', phone: '', org: '', role: '', password: '', confirm: '' });
   const [showPw, setShowPw] = useState(false);
   const [showCf, setShowCf] = useState(false);
@@ -50,6 +52,7 @@ export default function SignUpPage() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     const handleMouseMove = (e) => setMousePos({ x: e.clientX, y: e.clientY });
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
@@ -70,13 +73,32 @@ export default function SignUpPage() {
     return e;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     setErrors(errs);
     if (Object.keys(errs).length) return;
     setLoading(true);
-    setTimeout(() => { setLoading(false); nav('/dashboard'); }, 1600);
+    
+    try {
+      // Map UI roles to backend system roles
+      let systemRole = 'citizen';
+      if (form.role === 'First Responder') systemRole = 'responder';
+      if (form.role === 'Government Official') systemRole = 'admin';
+
+      await signup({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        role: systemRole
+      });
+      
+      setLoading(false); 
+      nav('/dashboard');
+    } catch (err) {
+      setLoading(false);
+      setErrors({ global: err.response?.data?.error || 'Account Creation Failed.' });
+    }
   };
 
   return (
@@ -112,14 +134,14 @@ export default function SignUpPage() {
         <div className="mb-12">
           <div className="flex items-center gap-4 mb-6 animate-fade-in">
             <div className="h-[1px] w-8 bg-[#00FFCC]/40" />
-            <span className="text-[9px] font-mono tracking-[0.5em] text-[#00FFCC] uppercase">Register_New_Identity</span>
+            <span className="text-[9px] font-mono tracking-[0.5em] text-[#00FFCC] uppercase">Register New Account</span>
           </div>
           <h1 className="font-outfit text-6xl font-black leading-[0.9] tracking-tighter mb-8 uppercase">
             JOIN THE<br />
-            <span className="bg-gradient-to-r from-[#00FFCC] via-white to-white/40 bg-clip-text text-transparent italic text-6xl">TACTICAL_GRID</span>
+            <span className="bg-gradient-to-r from-[#00FFCC] via-white to-white/40 bg-clip-text text-transparent italic text-6xl">COMMAND NETWORK</span>
           </h1>
           <p className="text-white/40 text-lg font-light leading-relaxed max-w-sm">
-            Become a sentinel in the planetary response network. Coordinate resource flows with zero human latency.
+            Become a verified member of the global response network to coordinate resource deployment during critical events.
           </p>
         </div>
 
@@ -150,29 +172,30 @@ export default function SignUpPage() {
             <Link to="/" className="lg:hidden flex items-center gap-2 text-[10px] font-mono text-[#00FFCC] uppercase tracking-widest mb-8">
               <ChevronLeft className="w-4 h-4" /> Back to Intelligence
             </Link>
-            <span className="text-[9px] font-mono text-blue-400 tracking-[0.6em] uppercase block mb-4">Identity_Provisioning</span>
+            <span className="text-[9px] font-mono text-blue-400 tracking-[0.6em] uppercase block mb-4">Registration Portal</span>
             <h2 className="font-outfit text-5xl font-black tracking-tighter uppercase leading-none mb-4">
-              CREATE_ACCOUNT
+              CREATE ACCOUNT
             </h2>
-            <p className="text-white/40 font-light">Already synchronized? <Link to="/login" className="text-blue-400 hover:text-[#00FFCC] transition-colors">Sign_In</Link></p>
+            <p className="text-white/40 font-light">Already have an account? <Link to="/login" className="text-blue-400 hover:text-[#00FFCC] transition-colors">Sign In</Link></p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest ml-1">Full_Name</label>
+                <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest ml-1">Full Name</label>
                 <div className="relative group">
                   <User className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-white/20 group-focus-within:text-[#00FFCC] transition-colors" />
-                  <input className="w-full bg-white/5 border border-white/5 backdrop-blur-xl px-14 py-5 font-mono text-sm tracking-widest focus:outline-none focus:border-[#00FFCC]/40 transition-all text-white placeholder:text-white/10" placeholder="J_SMITH" value={form.name} onChange={e => set('name', e.target.value)} />
+                  <input className="w-full bg-white/5 border border-white/5 backdrop-blur-xl px-14 py-5 font-mono text-sm tracking-widest focus:outline-none focus:border-[#00FFCC]/40 transition-all text-white placeholder:text-white/10" placeholder="NAME" value={form.name} onChange={e => set('name', e.target.value)} />
                 </div>
                 {errors.name && <p className="text-[9px] font-mono text-red-500 uppercase tracking-widest ml-1">{errors.name}</p>}
+                {errors.global && <p className="text-[9px] font-mono text-red-500 uppercase tracking-widest ml-1">{errors.global}</p>}
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest ml-1">Identity_Email</label>
+                <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest ml-1">Business Email</label>
                 <div className="relative group">
                   <Mail className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-white/20 group-focus-within:text-[#00FFCC] transition-colors" />
-                  <input className="w-full bg-white/5 border border-white/5 backdrop-blur-xl px-14 py-5 font-mono text-sm tracking-widest focus:outline-none focus:border-[#00FFCC]/40 transition-all text-white placeholder:text-white/10" placeholder="NAME@AGENCY.ORG" value={form.email} onChange={e => set('email', e.target.value)} />
+                  <input className="w-full bg-white/5 border border-white/5 backdrop-blur-xl px-14 py-5 font-mono text-sm tracking-widest focus:outline-none focus:border-[#00FFCC]/40 transition-all text-white placeholder:text-white/10" placeholder="EMAIL@AGENCY.ORG" value={form.email} onChange={e => set('email', e.target.value)} />
                 </div>
                 {errors.email && <p className="text-[9px] font-mono text-red-500 uppercase tracking-widest ml-1">{errors.email}</p>}
               </div>
@@ -180,29 +203,29 @@ export default function SignUpPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest ml-1">Comm_Phone</label>
+                <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest ml-1">Contact Phone</label>
                 <div className="relative group">
                   <Phone className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-white/20 group-focus-within:text-[#00FFCC] transition-colors" />
-                  <input className="w-full bg-white/5 border border-white/5 backdrop-blur-xl px-14 py-5 font-mono text-sm tracking-widest focus:outline-none focus:border-[#00FFCC]/40 transition-all text-white placeholder:text-white/10" placeholder="+1_234_567_890" value={form.phone} onChange={e => set('phone', e.target.value)} />
+                  <input className="w-full bg-white/5 border border-white/5 backdrop-blur-xl px-14 py-5 font-mono text-sm tracking-widest focus:outline-none focus:border-[#00FFCC]/40 transition-all text-white placeholder:text-white/10" placeholder="PHONE" value={form.phone} onChange={e => set('phone', e.target.value)} />
                 </div>
                 {errors.phone && <p className="text-[9px] font-mono text-red-500 uppercase tracking-widest ml-1">{errors.phone}</p>}
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest ml-1">Affiliation</label>
+                <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest ml-1">Organization</label>
                 <div className="relative group">
                   <Building2 className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-white/20 group-focus-within:text-[#00FFCC] transition-colors" />
-                  <input className="w-full bg-white/5 border border-white/5 backdrop-blur-xl px-14 py-5 font-mono text-sm tracking-widest focus:outline-none focus:border-[#00FFCC]/40 transition-all text-white placeholder:text-white/10" placeholder="ORG_NAME (OPT)" value={form.org} onChange={e => set('org', e.target.value)} />
+                  <input className="w-full bg-white/5 border border-white/5 backdrop-blur-xl px-14 py-5 font-mono text-sm tracking-widest focus:outline-none focus:border-[#00FFCC]/40 transition-all text-white placeholder:text-white/10" placeholder="AGENCY NAME" value={form.org} onChange={e => set('org', e.target.value)} />
                 </div>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest ml-1">Operational_Role</label>
+              <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest ml-1">System Role</label>
               <div className="relative group">
                 <Briefcase className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-white/20 group-focus-within:text-[#00FFCC] transition-colors" />
                 <select className="w-full bg-white/5 border border-white/5 backdrop-blur-xl px-14 py-5 font-mono text-sm tracking-widest focus:outline-none focus:border-[#00FFCC]/40 transition-all text-white appearance-none cursor-pointer" value={form.role} onChange={e => set('role', e.target.value)}>
-                   <option value="" className="bg-[#08080A]">SELECT_ROLE</option>
+                   <option value="" className="bg-[#08080A]">CHOOSE ROLE</option>
                    {ROLES.map(r => <option key={r} value={r} className="bg-[#08080A] uppercase">{r}</option>)}
                 </select>
                 <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none text-white/20">▼</div>
@@ -212,10 +235,10 @@ export default function SignUpPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest ml-1">Access_Token</label>
+                <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest ml-1">Password</label>
                 <div className="relative group">
                   <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-white/20 group-focus-within:text-[#00FFCC] transition-colors" />
-                  <input type={showPw ? 'text' : 'password'} className="w-full bg-white/5 border border-white/5 backdrop-blur-xl px-14 py-5 font-mono text-sm tracking-widest focus:outline-none focus:border-[#00FFCC]/40 transition-all text-white placeholder:text-white/10" placeholder="PASSCODE" value={form.password} onChange={e => set('password', e.target.value)} />
+                  <input type={showPw ? 'text' : 'password'} className="w-full bg-white/5 border border-white/5 backdrop-blur-xl px-14 py-5 font-mono text-sm tracking-widest focus:outline-none focus:border-[#00FFCC]/40 transition-all text-white placeholder:text-white/10" placeholder="PASSWORD" value={form.password} onChange={e => set('password', e.target.value)} />
                   <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-5 top-1/2 -translate-y-1/2 text-white/20 hover:text-white">
                     {showPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -232,10 +255,10 @@ export default function SignUpPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest ml-1">Confirm_Token</label>
+                <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest ml-1">Confirm Password</label>
                 <div className="relative group">
                   <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-white/20 group-focus-within:text-[#00FFCC] transition-colors" />
-                  <input type={showCf ? 'text' : 'password'} className="w-full bg-white/5 border border-white/5 backdrop-blur-xl px-14 py-5 font-mono text-sm tracking-widest focus:outline-none focus:border-[#00FFCC]/40 transition-all text-white placeholder:text-white/10" placeholder="RE-PASSCODE" value={form.confirm} onChange={e => set('confirm', e.target.value)} />
+                  <input type={showCf ? 'text' : 'password'} className="w-full bg-white/5 border border-white/5 backdrop-blur-xl px-14 py-5 font-mono text-sm tracking-widest focus:outline-none focus:border-[#00FFCC]/40 transition-all text-white placeholder:text-white/10" placeholder="RE-ENTER" value={form.confirm} onChange={e => set('confirm', e.target.value)} />
                   <button type="button" onClick={() => setShowCf(!showCf)} className="absolute right-5 top-1/2 -translate-y-1/2 text-white/20 hover:text-white">
                     {showCf ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -251,7 +274,7 @@ export default function SignUpPage() {
                 </div>
                 <input type="checkbox" className="hidden" checked={agreed} onChange={() => setAgreed(!agreed)} />
                 <span className="text-[10px] font-mono text-white/40 uppercase tracking-[0.2em] leading-relaxed">
-                  Synchronize my identity with <span className="text-white">CrisisChain Tactical Protocols</span> and accept <span className="text-[#00FFCC] hover:underline cursor-pointer">Mission_Parameters</span>.
+                  I agree to the <span className="text-white">CrisisChain Strategic Terms</span> and accept the <span className="text-[#00FFCC] hover:underline cursor-pointer">Terms of Service</span>.
                 </span>
               </label>
               {errors.agreed && <p className="text-[9px] font-mono text-red-500 uppercase tracking-widest ml-1">{errors.agreed}</p>}
@@ -264,7 +287,7 @@ export default function SignUpPage() {
             >
               <div className="relative z-10 flex items-center justify-center gap-4">
                 <span className={`text-xl font-outfit font-black uppercase tracking-widest transition-colors duration-700 ${loading ? 'text-white/40' : 'group-hover:text-black text-[#00FFCC]'}`}>
-                  {loading ? 'INITIALIZING_ACCOUNT...' : 'AUTHORIZE_SENTINEL'}
+                  {loading ? 'CREATING ACCOUNT...' : 'REGISTER ACCOUNT'}
                 </span>
                 {!loading && <CheckCircle2 className="w-6 h-6 text-[#00FFCC] group-hover:text-black transition-colors" />}
               </div>

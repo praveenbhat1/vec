@@ -28,10 +28,10 @@ export default function AnalyticsPanel() {
                 <BarChart3 className="w-4 h-4 text-amber-500 group-hover:scale-110 transition-transform" />
             </div>
             <div>
-                <h4 className="font-outfit font-black text-sm tracking-tight text-white uppercase leading-none mb-1">CORTEX_ANALYTICS</h4>
+                <h4 className="font-outfit font-black text-sm tracking-tight text-white uppercase leading-none mb-1">SYSTEM ANALYTICS</h4>
                 <div className="flex items-center gap-2">
                    <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" />
-                   <span className="font-mono text-[8px] font-bold tracking-[0.2em] text-white/20 uppercase">UPLINK_SYNC_ACTIVE</span>
+                   <span className="font-mono text-[8px] font-bold tracking-[0.2em] text-white/20 uppercase">LIVE SYNC ACTIVE</span>
                 </div>
             </div>
         </div>
@@ -45,7 +45,7 @@ export default function AnalyticsPanel() {
         {/* Tactical Bar Distribution */}
         <div className="flex flex-col gap-5 bg-white/[0.01] border border-white/5 p-5 hover:border-white/10 transition-all duration-300 group/dist">
           <div className="flex items-center justify-between">
-             <span className="font-mono text-[9px] font-black tracking-widest text-white/30 uppercase">SECTOR_DENSITY_INTEL</span>
+             <span className="font-mono text-[9px] font-black tracking-widest text-white/30 uppercase">REPORTS BY REGION</span>
              <Globe size={11} className="text-white/10" />
           </div>
           
@@ -66,7 +66,7 @@ export default function AnalyticsPanel() {
         {/* Predictive Trend Line Line Chart */}
         <div className="flex flex-col gap-5 bg-white/[0.01] border border-white/5 p-5 hover:border-white/10 transition-all duration-300 group/trend">
           <div className="flex items-center justify-between">
-             <span className="font-mono text-[9px] font-black tracking-widest text-white/30 uppercase">THREAT_VECTOR_TRACKING</span>
+             <span className="font-mono text-[9px] font-black tracking-widest text-white/30 uppercase">TREND OVER TIME</span>
              <TrendingUp size={11} className="text-[#00FFCC]/20" />
           </div>
           
@@ -103,22 +103,22 @@ export default function AnalyticsPanel() {
           </div>
           
           <div className="flex justify-between items-center text-[7px] font-mono text-white/10 uppercase tracking-[0.3em] mt-2">
-             <span>T_MINUS_12H</span>
-             <span>T_SYNC_NOW</span>
+             <span>12 HOURS AGO</span>
+             <span>RIGHT NOW</span>
           </div>
         </div>
       </div>
 
       {/* Analytics Footer HUD */}
       <div className="px-8 py-4 border-t border-white/5 bg-white/[0.01] flex items-center justify-between">
-         <div className="flex items-center gap-6">
+          <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
                <Gauge size={10} className="text-white/20" />
-               <span className="font-mono text-[8px] font-bold text-white/30 uppercase tracking-[0.2em]">CORTEX_LOAD: 42%</span>
+               <span className="font-mono text-[8px] font-bold text-white/30 uppercase tracking-[0.2em]">CAPACITY UTILIZATION: 42%</span>
             </div>
             <div className="flex items-center gap-2">
                <Target size={10} className="text-white/20" />
-               <span className="font-mono text-[8px] font-bold text-white/30 uppercase tracking-[0.2em]">CONF_INDEX: 0.982</span>
+               <span className="font-mono text-[8px] font-bold text-white/30 uppercase tracking-[0.2em]">ACCURACY: 98%</span>
             </div>
          </div>
       </div>

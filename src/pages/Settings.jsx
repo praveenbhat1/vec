@@ -28,13 +28,13 @@ class LocalErrorBoundary extends Component {
                     <div className="w-16 h-16 border border-red-500/20 flex items-center justify-center mb-6">
                         <AlertCircle className="text-red-500" size={32} />
                     </div>
-                    <h2 className="font-outfit font-black text-2xl text-white uppercase tracking-tighter mb-2">SYSTEM_ERROR</h2>
+                    <h2 className="font-outfit font-black text-2xl text-white uppercase tracking-tighter mb-2">SYSTEM ERROR</h2>
                     <p className="font-mono text-[9px] text-white/20 uppercase tracking-[0.4em] mb-8">Connection lost // Refresh to retry</p>
                     <button 
                         onClick={() => window.location.reload()}
                         className="px-8 py-3 bg-red-600 text-white font-mono text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all"
                     >
-                        RESTART SYSTEM
+                        RETRY CONNECTION
                     </button>
                 </div>
             );
@@ -200,7 +200,7 @@ function SettingsContent() {
                                 <span className="text-[10px] font-mono font-bold tracking-[0.4em] text-red-500 uppercase">SYSTEM SETTINGS</span>
                             </div>
                             <h1 className="font-outfit text-4xl lg:text-5xl font-black tracking-tighter uppercase text-white leading-none">
-                                SETTINGS<span className="text-white/20">://</span>CONSOLE
+                                SETTINGS<span className="text-white/20">://</span>PANEL
                             </h1>
                         </div>
                         <div className="flex items-center gap-4 mt-6 md:mt-0 px-4 py-2 bg-white/5 border border-white/10 font-mono text-[9px] uppercase tracking-widest text-white/40">
@@ -395,7 +395,7 @@ function SettingsContent() {
                                     <div className="space-y-2">
                                         <Toggle label="Emergency Alerts" subLabel="Visual pulse on critical alert detection" enabled={notifs.alerts} onChange={v => setNotifs({...notifs, alerts: v})} />
                                         <Toggle label="Email Notifications" subLabel="Daily summaries and priority reports" enabled={notifs.email} onChange={v => setNotifs({...notifs, email: v})} />
-                                        <Toggle label="SMS Delivery" subLabel="Immediate text delivery for Tier-1 events" enabled={notifs.sms} onChange={v => setNotifs({...notifs, sms: v})} />
+                                        <Toggle label="SMS Delivery" subLabel="Immediate text delivery for emergency events" enabled={notifs.sms} onChange={v => setNotifs({...notifs, sms: v})} />
                                     </div>
                                 </SettingCard>
                              </div>
@@ -429,7 +429,7 @@ function SettingsContent() {
                                             </div>
                                         </div>
                                     </div>
-                                    <Toggle label="Automated Dispatch" subLabel="Enable AI-assisted asset allocation for regional events" enabled={config.autoDispatch} onChange={v => setConfig({...config, autoDispatch: v})} />
+                                    <Toggle label="Automated Dispatch" subLabel="Enable AI-assisted help for regional events" enabled={config.autoDispatch} onChange={v => setConfig({...config, autoDispatch: v})} />
                                 </SettingCard>
                              </div>
 
@@ -442,7 +442,7 @@ function SettingsContent() {
                         <div className="col-span-12 lg:col-span-8 animate-slide-up" style={{ animationDelay: '0.6s' }}>
                             <SettingCard 
                                 title="Security" 
-                                description="Secure your command session with multi-factor authentication and cipher management."
+                                description="Secure your account with multi-factor authentication and password management."
                                 icon={Shield} 
                                 accent="#ef4444"
                             >
@@ -480,15 +480,15 @@ function SettingsContent() {
                                 <div>
                                     <h4 className="font-outfit font-black text-2xl text-white uppercase tracking-tight mb-4">Logout All Sessions</h4>
                                     <p className="font-mono text-[10px] text-red-500/60 uppercase tracking-widest leading-relaxed mb-8">
-                                        Forcibly terminate all active sessions across all devices for your account.
+                                        Log out of all devices and active sessions for this account.
                                     </p>
                                 </div>
                                 <div className="space-y-4">
                                     <button 
-                                        onClick={() => openConfirm('logout_all', 'Terminate all active user sessions?')}
+                                        onClick={() => openConfirm('logout_all', 'Log out of all devices?')}
                                         className="w-full py-5 bg-white/5 border border-red-500/20 text-red-500 font-mono text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-4"
                                     >
-                                       TERMINATE OTHER SESSIONS
+                                       LOG OUT OTHER DEVICES
                                     </button>
                                     <button 
                                         onClick={handleLogout}

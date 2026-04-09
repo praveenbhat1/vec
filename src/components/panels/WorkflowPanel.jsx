@@ -2,10 +2,10 @@ import { useDashboard } from '../../context/DashboardContext';
 import { AlertTriangle, ClipboardCheck, Siren, HeartHandshake, ChevronRight } from 'lucide-react';
 
 const STEPS = [
-    { id:1, title:'SIGNAL_INTAKE',      sub:'12:01 UTC',   icon: AlertTriangle,  color:'#ef4444', desc:'Anomaly detected in coastal sectors.' },
-    { id:2, title:'THREAT_VECTOR',     sub:'12:45 UTC',   icon: ClipboardCheck, color:'#fbbf24', desc:'Structural impact modeling active.' },
-    { id:3, title:'RESPONSE_SYNC',    sub:'13:30 UTC',   icon: Siren,          color:'#3b82f6', desc:'Deployment of priority response units.' },
-    { id:4, title:'RECOVERY_LOG',      sub:'PLANNED',     icon: HeartHandshake, color:'#10b981', desc:'Post-incident stability assessment.' },
+    { id:1, title:'INCIDENT REPORTED',      sub:'12:01 UTC',   icon: AlertTriangle,  color:'#ef4444', desc:'Emergency reported and logged.' },
+    { id:2, title:'SITUATION ANALYSIS',     sub:'12:45 UTC',   icon: ClipboardCheck, color:'#fbbf24', desc:'Analyzing the impact and scope.' },
+    { id:3, title:'EMERGENCY RESPONSE',    sub:'13:30 UTC',   icon: Siren,          color:'#3b82f6', desc:'Rescue teams on the move.' },
+    { id:4, title:'RECOVERY & STABILITY',      sub:'PLANNED',     icon: HeartHandshake, color:'#10b981', desc:'Final checks and long-term help.' },
 ];
 
 export default function WorkflowPanel() {
@@ -17,7 +17,7 @@ export default function WorkflowPanel() {
             <div className="flex-shrink-0 flex flex-col justify-center px-8 bg-white/[0.02]">
                 <div className="h-1 w-8 bg-[#00FFCC] mb-4" />
                 <p className="font-mono text-[10px] text-white/40 tracking-[0.5em] uppercase vertical-text">
-                    LIFECYCLE
+                    STATUS
                 </p>
             </div>
 
@@ -42,7 +42,7 @@ export default function WorkflowPanel() {
                                 {/* Step Indicator */}
                                 <div className="absolute top-4 left-10 flex items-center gap-2">
                                     <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[#00FFCC] animate-pulse shadow-[0_0_8px_#00FFCC]' : isCompleted ? 'bg-white/40' : 'bg-white/10'}`} />
-                                    <span className="font-mono text-[9px] text-white/20 tracking-widest uppercase">STAGE_0{step.id}</span>
+                                    <span className="font-mono text-[9px] text-white/20 tracking-widest uppercase">STEP 0{step.id}</span>
                                 </div>
 
                                 {/* Icon & Title */}

@@ -17,13 +17,13 @@ export default function ResourceTrackingPanel() {
                         <Truck className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
                     </div>
                     <div>
-                        <h4 className="font-outfit font-black text-xl tracking-tight text-white uppercase leading-none mb-1">ASSET_DEPLOYMENT</h4>
-                        <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-white/30 uppercase">LIVE_INVENTORY: {resources.length} CHANNELS</p>
+                        <h4 className="font-outfit font-black text-xl tracking-tight text-white uppercase leading-none mb-1">RESOURCES</h4>
+                        <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-white/30 uppercase">STOCK LEVEL: {resources.length} ITEMS</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]" />
-                   <span className="font-mono text-[9px] text-emerald-500 font-black tracking-widest uppercase italic">SYNC_STABLE</span>
+                   <span className="font-mono text-[9px] text-emerald-500 font-black tracking-widest uppercase italic">CONNECTED</span>
                 </div>
             </div>
 
@@ -31,7 +31,7 @@ export default function ResourceTrackingPanel() {
             <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-white/[0.03]">
                 {resources.map((res) => {
                     const Icon = getIcon(res.iconName);
-                    const pct = Math.min(Math.round((res.count / res.total) * 100), 100);
+                    const pct = Math.min(Math.round((res.deployed / res.total) * 100), 100);
                     const barColor = pct >= 80 ? '#ef4444' : pct >= 60 ? '#fbbf24' : '#00FFCC';
                     const textColor = pct >= 80 ? 'text-red-500' : pct >= 60 ? 'text-yellow-500' : 'text-[#00FFCC]';
 
@@ -49,7 +49,7 @@ export default function ResourceTrackingPanel() {
                                         {res.name}
                                     </h5>
                                     <div className="font-mono text-[10px] font-black tracking-widest text-white/10 uppercase">
-                                        <b className="text-white/60">{res.count}</b> / {res.total}
+                                        <b className="text-white/60">{res.deployed}</b> / {res.total}
                                     </div>
                                 </div>
                                 
@@ -60,9 +60,9 @@ export default function ResourceTrackingPanel() {
                                 </div>
 
                                 <div className="flex items-center justify-between">
-                                    <span className="font-mono text-[8px] font-black tracking-widest uppercase text-white/20">DEPLOYMENT_FLUX</span>
+                                    <span className="font-mono text-[8px] font-black tracking-widest uppercase text-white/20">CAPACITY</span>
                                     <span className={`font-mono text-[9px] font-black tracking-widest uppercase italic ${textColor}`}>
-                                        {pct >= 80 ? 'CAPACITY_CRITICAL' : pct >= 60 ? 'MODERATE_FLUX' : 'LINK_OPTIMAL'}
+                                        {pct >= 80 ? 'SUPPLY CRITICAL' : pct >= 60 ? 'MODERATE' : 'OPTIMAL'}
                                     </span>
                                 </div>
                             </div>
@@ -77,7 +77,7 @@ export default function ResourceTrackingPanel() {
                     onClick={() => navigate('/resources')}
                     className="w-full h-12 bg-white/[0.03] hover:bg-emerald-500 text-white/40 hover:text-black border border-white/5 hover:border-transparent transition-all duration-500 font-mono text-[10px] font-black tracking-[0.5em] uppercase flex items-center justify-center gap-4 group/btn shadow-[0_0_20px_rgba(0,0,0,0.4)]"
                 >
-                    INITIALIZE_INVENTORY_UPLINK
+                    VIEW FULL INVENTORY
                     <ChevronRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-2" />
                 </button>
             </div>

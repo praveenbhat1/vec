@@ -25,7 +25,7 @@ export default function Sidebar() {
     const w = isSidebarOpen ? W_OPEN : W_CLOSED;
 
     const handleLogout = () => {
-        addToast('Terminating session...', 'info');
+        addToast('Logging out...', 'info');
         setTimeout(() => {
             navigate('/');
         }, 800);
@@ -48,7 +48,7 @@ export default function Sidebar() {
                     {isSidebarOpen && (
                         <div className="flex flex-col gap-0.5 leading-none">
                             <span className="font-outfit font-black text-2xl tracking-tighter uppercase text-white whitespace-nowrap">CRISISCHAIN</span>
-                            <span className="text-[10px] font-mono font-bold text-blue-500 tracking-[0.5em] opacity-40 uppercase">COMMAND_SYS_V5</span>
+                            <span className="text-[10px] font-mono font-bold text-blue-500 tracking-[0.5em] opacity-40 uppercase">ADMIN COMMAND SYSTEM</span>
                         </div>
                     )}
                 </Link>
@@ -133,14 +133,14 @@ export default function Sidebar() {
                         </div>
                         {isSidebarOpen && (
                           <div className="flex flex-col text-left">
-                            <span className="text-[11px] font-mono font-black text-white/40 uppercase tracking-widest">Signal Status</span>
-                            <span className="text-[9px] font-mono text-emerald-500 uppercase tracking-widest font-black animate-pulse">Sync Optimal</span>
+                            <span className="text-[11px] font-mono font-black text-white/40 uppercase tracking-widest">System Status</span>
+                            <span className="text-[9px] font-mono text-emerald-500 uppercase tracking-widest font-black animate-pulse">Connected</span>
                           </div>
                         )}
                     </div>
                 </div>
                 
-                {/* Sovereign Identity Card */}
+                {/* User Profile Card */}
                 <div className={`p-6 bg-white/[0.03] border border-white/5 relative group/user cursor-pointer overflow-hidden ${!isSidebarOpen && 'lg:p-0 lg:border-none lg:bg-transparent lg:flex lg:justify-center'}`}>
                    <div className="absolute inset-0 bg-gradient-to-tr from-[#00FFCC]/5 to-transparent opacity-0 group-hover/user:opacity-100 transition-opacity" />
                    <div className="flex items-center gap-6 relative z-10 w-full">
@@ -150,10 +150,10 @@ export default function Sidebar() {
                       {isSidebarOpen ? (
                          <div className="flex items-center justify-between flex-1">
                             <div className="flex flex-col gap-1 leading-none">
-                                <span className="text-[13px] font-outfit font-black text-white uppercase tracking-wider">Commander Alex</span>
+                                <span className="text-[13px] font-outfit font-black text-white uppercase tracking-wider">Alex Johnson</span>
                                 <div className="flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                                    <span className="text-[9px] font-mono text-white/20 uppercase tracking-[0.2em]">Rank: Administrator</span>
+                                    <span className="text-[9px] font-mono text-white/20 uppercase tracking-[0.2em]">Role: Admin</span>
                                 </div>
                             </div>
                             <button 

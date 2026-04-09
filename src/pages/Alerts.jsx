@@ -23,7 +23,7 @@ class LocalErrorBoundary extends Component {
             return (
                 <div className="h-screen w-full bg-[#08080A] flex items-center justify-center">
                     <div className="text-red-500 font-mono text-[9px] uppercase tracking-[0.5em] animate-pulse">
-                        UPLINK_FAILURE // REBOOT_REQUIRED
+                        CONNECTION ERROR // PLEASE REFRESH
                     </div>
                 </div>
             );
@@ -192,9 +192,9 @@ function BroadcastModal({ isOpen, onClose, onBroadcast }) {
                     <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-3">
                             <Radio size={14} className="text-red-500 animate-pulse" />
-                            <span className="font-mono text-[10px] text-red-500 uppercase tracking-[0.5em] font-black">PRIORITY_ONE_BROADCAST</span>
+                            <span className="font-mono text-[10px] text-red-500 uppercase tracking-[0.5em] font-black">EMERGENCY ANNOUNCEMENT</span>
                         </div>
-                        <h2 className="font-outfit text-4xl font-black text-white tracking-tighter uppercase leading-none">INITIALIZE_ALERTS</h2>
+                        <h2 className="font-outfit text-4xl font-black text-white tracking-tighter uppercase leading-none">SEND NEW ALERT</h2>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white/5 transition-all text-white/40 hover:text-white">
                         <X size={24} />
@@ -204,13 +204,13 @@ function BroadcastModal({ isOpen, onClose, onBroadcast }) {
                 {/* Body */}
                 <form onSubmit={handleSubmit} className="p-10 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
                     <div className="space-y-3">
-                        <label className="text-[10px] font-mono text-white/20 uppercase tracking-[0.3em] font-black ml-1">INCIDENT_TITLE*</label>
+                        <label className="text-[10px] font-mono text-white/20 uppercase tracking-[0.3em] font-black ml-1">EVENT NAME*</label>
                         <input 
                             required
                             type="text"
                             value={formData.title}
                             onChange={e => setFormData({...formData, title: e.target.value})}
-                            placeholder="Brief_Incident_Summary..."
+                            placeholder="Example: Large Street Fire..."
                             className="w-full bg-white/5 border border-white/5 focus:border-red-500/40 px-6 py-4 font-mono text-xs text-white uppercase tracking-widest outline-none transition-all placeholder:text-white/5"
                         />
                     </div>
@@ -245,43 +245,43 @@ function BroadcastModal({ isOpen, onClose, onBroadcast }) {
                     </div>
 
                     <div className="space-y-3">
-                        <label className="text-[10px] font-mono text-white/20 uppercase tracking-[0.3em] font-black ml-1">LOCALITY_COORDINATS*</label>
+                        <label className="text-[10px] font-mono text-white/20 uppercase tracking-[0.3em] font-black ml-1">LOCATION*</label>
                         <input 
                             required
                             type="text"
                             value={formData.location}
                             onChange={e => setFormData({...formData, location: e.target.value})}
-                            placeholder="Sector_Region_ID..."
+                            placeholder="Enter address or area..."
                             className="w-full bg-white/5 border border-white/5 focus:border-red-500/40 px-6 py-4 font-mono text-xs text-white uppercase tracking-widest outline-none transition-all placeholder:text-white/5"
                         />
                     </div>
 
                     <div className="space-y-3">
-                        <label className="text-[10px] font-mono text-white/20 uppercase tracking-[0.3em] font-black ml-1">SITUATION_REPORT*</label>
+                        <label className="text-[10px] font-mono text-white/20 uppercase tracking-[0.3em] font-black ml-1">DETAILS*</label>
                         <textarea 
                             required
                             rows="4"
                             value={formData.description}
                             onChange={e => setFormData({...formData, description: e.target.value})}
-                            placeholder="Detailed_Intel_Report..."
+                            placeholder="Describe what happened..."
                             className="w-full bg-white/5 border border-white/5 focus:border-red-500/40 px-6 py-4 font-mono text-xs text-white uppercase tracking-widest outline-none transition-all resize-none placeholder:text-white/5"
                         />
                     </div>
-
+                    
                     <div className="pt-6 border-t border-white/5 flex justify-end gap-6">
                         <button 
                             type="button"
                             onClick={onClose}
                             className="px-8 py-4 font-mono text-[10px] text-white/20 hover:text-white font-black uppercase tracking-widest transition-all"
                         >
-                            ABORT_MISSION
+                            CANCEL
                         </button>
                         <button 
                             type="submit"
                             disabled={isSubmitting}
                             className="px-12 py-4 bg-red-600 text-white font-mono text-[10px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-[0_0_30px_rgba(239,68,68,0.2)] disabled:opacity-50 disabled:grayscale"
                         >
-                            {isSubmitting ? 'AUTHORIZING_CHANNELS...' : 'AUTHORIZE_BROADCAST'}
+                            {isSubmitting ? 'SENDING ALERT...' : 'SEND ALERT'}
                         </button>
                     </div>
                 </form>
@@ -338,17 +338,15 @@ function AlertsContent() {
     return (
         <div className="flex h-screen w-full overflow-hidden bg-[#08080A] text-[#E5E5E7] font-inter">
             
-            {/* ── AMBIENT TACTICAL OVERLAY ── */}
-            <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-[0.03]">
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(239,68,68,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(239,68,68,0.01)_1px,transparent_1px)] bg-[size:100px_100px]" />
-                <div className="absolute w-full h-[1px] bg-gradient-to-r from-transparent via-red-500 to-transparent shadow-[0_0_10px_#ef4444] animate-scan-y top-0" />
+            {/* ── AMBIENT MESH BACKGROUND (Synced with Resource Hub) ── */}
+            <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+                <div 
+                  className="absolute w-[1000px] h-[1000px] rounded-full blur-[200px] opacity-[0.05] bg-blue-600 transition-transform duration-1000 ease-out"
+                  style={{ transform: `translate(${mousePos.x - 500}px, ${mousePos.y - 500}px)` }}
+                />
+                <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full blur-[180px] opacity-[0.03] bg-cyan-500 animate-pulse" />
+                <div className="absolute inset-0 opacity-[0.02] contrast-150 brightness-150 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
             </div>
-
-            {/* Mouse Glow */}
-            <div 
-                className="fixed w-[600px] h-[600px] rounded-full blur-[200px] bg-red-600/5 pointer-events-none z-0 transition-transform duration-700 ease-out"
-                style={{ transform: `translate(${mousePos.x - 300}px, ${mousePos.y - 300}px)` }}
-            />
 
             <Sidebar />
             <TopNavbar />
@@ -364,10 +362,10 @@ function AlertsContent() {
 
                     {/* ── HEADER ── */}
                     <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between border-b border-white/5 pb-8 lg:pb-10">
-                        <div className="space-y-2">
+                        <div className="flex flex-col gap-4">
                             <div className="flex items-center gap-3">
                                 <Shield size={14} className="text-red-500" />
-                                <span className="text-[10px] font-mono font-bold tracking-[0.4em] text-red-500 uppercase">TACTICAL_ALERTS_PANEL</span>
+                                <span className="text-[10px] font-mono font-bold tracking-[0.4em] text-red-500 uppercase">LIVE EMERGENCY FEED</span>
                             </div>
                             <h1 className="font-outfit text-4xl font-black tracking-tighter uppercase text-white leading-none">
                                 EMERGENCY<span className="text-white/20">://</span>ALERTS
@@ -376,23 +374,23 @@ function AlertsContent() {
                         
                         <div className="flex flex-wrap gap-4 mt-8 md:mt-0">
                             <button className="px-6 py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 transition-all font-mono text-[9px] font-black tracking-widest uppercase">
-                                Export_Logs
+                                Export Logs
                             </button>
                             <button 
                                 onClick={() => setIsBroadcastOpen(true)}
                                 className="px-8 py-2.5 bg-red-600 text-white hover:brightness-110 transition-all font-mono text-[9px] font-black tracking-widest uppercase shadow-[0_0_20px_rgba(239,68,68,0.2)]"
                             >
-                                Broadcast_Priority_1
+                                Send Emergency Alert
                             </button>
                         </div>
                     </div>
 
                     {/* ── KPI GRID ── */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10 animate-fade-in">
-                        <StatCard label="Active_Events" value={alerts.length} icon={Bell} color="#ef4444" />
-                        <StatCard label="Critical_Threats" value={alerts.filter(a => a.severity === 'Critical').length} icon={ShieldAlert} color="#ef4444" />
-                        <StatCard label="Deployed_Assets" value="28" icon={Truck} color="#3b82f6" />
-                        <StatCard label="Resolved_Daily" value="116" icon={CheckCircle2} color="#10b981" />
+                        <StatCard label="Active Alerts" value={alerts.length} icon={Bell} color="#ef4444" />
+                        <StatCard label="High Danger" value={alerts.filter(a => a.severity === 'Critical').length} icon={ShieldAlert} color="#ef4444" />
+                        <StatCard label="Teams Sent" value="28" icon={Truck} color="#3b82f6" />
+                        <StatCard label="Resolved Today" value="116" icon={CheckCircle2} color="#10b981" />
                     </div>
 
                     {/* ── OPERATIONS WORKSPACE ── */}
@@ -400,7 +398,7 @@ function AlertsContent() {
                         
                         {/* LEFT: INCIDENT STREAM */}
                         <div className="col-span-12 lg:col-span-4 flex flex-col gap-4 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                            <SectionLabel text="INCOMING_THREAT_VECTORS" icon={Satellite} />
+                            <SectionLabel text="ONGOING EMERGENCIES" icon={Satellite} />
                             
                             <div className="flex flex-wrap gap-2 mb-4">
                                 {['All', 'Fire', 'Flood', 'Medical'].map(v => (
@@ -496,17 +494,17 @@ function AlertsContent() {
                                         {/* Detail Body */}
                                         <div className="p-8 lg:p-10 flex-1 space-y-12">
                                             <div>
-                                                <SectionLabel text="INCIDENT_SYNOPSIS" icon={Info} />
+                                                <SectionLabel text="SUMMARY" icon={Info} />
                                                 <p className="font-outfit font-bold text-xl lg:text-2xl text-white/70 leading-relaxed pl-6 border-l border-red-600/30">
                                                     {selectedAlert.description}
                                                 </p>
                                             </div>
-
+                                            
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                                                 <div className="space-y-6">
-                                                   <SectionLabel text="RESOURCE_ALLOTMENT" icon={Truck} />
+                                                   <SectionLabel text="HELP SENT" icon={Truck} />
                                                    <div className="bg-blue-600/5 border border-blue-600/10 p-6">
-                                                      <span className="block text-[8px] font-mono text-blue-400/60 uppercase tracking-widest mb-2">Deployed_Assets</span>
+                                                      <span className="block text-[8px] font-mono text-blue-400/60 uppercase tracking-widest mb-2">Deployed Teams</span>
                                                       <span className="text-xl font-outfit font-black text-white uppercase">{selectedAlert.resources}</span>
                                                    </div>
                                                 </div>
@@ -529,10 +527,10 @@ function AlertsContent() {
                                         {/* Detail Actions */}
                                         <div className="p-8 lg:p-10 bg-white/[0.01] border-t border-white/5 flex gap-4">
                                             <button className="flex-1 py-4 bg-red-600 text-white font-mono text-[10px] font-black uppercase tracking-[0.3em] hover:brightness-110 active:scale-95 transition-all shadow-lg">
-                                                INITIALIZE_RESPONSE
+                                                SEND HELP NOW
                                             </button>
                                             <button className="px-10 py-4 bg-white/5 border border-white/10 text-white font-mono text-[10px] font-black uppercase tracking-[0.3em] hover:bg-white/10 transition-all">
-                                                MARK_RESOLVED
+                                                MARK AS FIXED
                                             </button>
                                         </div>
                                     </>

@@ -17,16 +17,39 @@ export const SZ = {
   navbarH:       72,
 };
 
-function TacticalCortexOverlay() {
+function SystemGridOverlay({ mousePos }) {
   return (
-    <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden opacity-[0.03]">
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,204,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,204,0.01)_1px,transparent_1px)] bg-[size:100px_100px]" />
-      <div className="absolute w-full h-[1px] bg-gradient-to-r from-transparent via-[#00FFCC] to-transparent shadow-[0_0_10px_#00FFCC] animate-scan-y top-0 blur-[0.5px] will-change-transform" />
+    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+      {/* ── UNIQUE ADMIN SPECTRUM BACKGROUND ── */}
+      
+      {/* Primary Brand Glow (Cyan) - Follows Mouse closely */}
+      <div 
+        className="absolute w-[600px] h-[600px] rounded-full blur-[120px] opacity-[0.08] bg-[#00FFCC] transition-transform duration-700 ease-out"
+        style={{ transform: `translate(${mousePos.x - 300}px, ${mousePos.y - 300}px)` }}
+      />
+
+      {/* Secondary Depth Blob (Purple) - Drifts slightly */}
+      <div 
+        className="absolute w-[800px] h-[800px] rounded-full blur-[150px] opacity-[0.04] bg-purple-600 transition-transform duration-1000 ease-out"
+        style={{ transform: `translate(${(mousePos.x * 0.5) - 400}px, ${(mousePos.y * 0.5) - 400}px)` }}
+      />
+
+      {/* Tertiary Accent (Deep Blue) - Fixed subtle pulse */}
+      <div className="absolute -bottom-20 -left-20 w-[600px] h-[600px] rounded-full blur-[180px] opacity-[0.03] bg-blue-700 animate-pulse" />
+      
+      {/* Grainy Texture for Premium Look */}
+      <div className="absolute inset-0 opacity-[0.03] contrast-125 brightness-125 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+      
+      {/* Grid Overlay */}
+      <div className="absolute inset-0 opacity-[0.02] bg-[linear-gradient(rgba(0,255,204,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,204,0.05)_1px,transparent_1px)] bg-[size:80px_80px]" />
+      
+      {/* Scanning Laser Line */}
+      <div className="absolute w-full h-[1px] bg-gradient-to-r from-transparent via-[#00FFCC]/20 to-transparent shadow-[0_0_15px_rgba(0,255,204,0.1)] animate-scan-y top-0 blur-[0.5px] will-change-transform" />
     </div>
   );
 }
 
-function PanelContainer({ children, label = "DATA_STREAM", status = "STABLE", accent = "#00FFCC" }) {
+function PanelContainer({ children, label = "LIVE DATA", status = "STABLE", accent = "#00FFCC" }) {
   return (
     <div className="group relative h-full bg-[#0E1015]/95 border border-white/5 hover:border-white/10 transition-all duration-300 overflow-hidden flex flex-col rounded-sm will-change-transform">
       <div className="px-4 md:px-6 py-4 flex items-center justify-between bg-white/[0.04] border-b border-white/5 relative z-20">
@@ -65,8 +88,15 @@ function StatCard({ label, value, trend, icon: Icon, color }) {
 }
 
 export default function DashboardMain() {
-  const { toasts, isSidebarOpen, closeSidebar } = useDashboard();
+  const { toasts, isSidebarOpen, closeSidebar, stats } = useDashboard();
   const ml = isSidebarOpen ? SZ.sidebarOpen : SZ.sidebarClosed;
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e) => setMousePos({ x: e.clientX, y: e.clientY });
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   useEffect(() => {
     closeSidebar();
@@ -77,7 +107,7 @@ export default function DashboardMain() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#08080A] text-[#E5E5E7] font-inter">
       
-      <TacticalCortexOverlay />
+      <SystemGridOverlay mousePos={mousePos} />
 
       <Sidebar />
       <TopNavbar />
@@ -95,50 +125,50 @@ export default function DashboardMain() {
           {/* Functional Dashboard Header */}
           <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between border-b border-white/5 pb-8">
              <div className="space-y-2">
-                <div className="flex items-center gap-3">
+                 <div className="flex items-center gap-3">
                   <Shield size={14} className="text-[#00FFCC]" />
-                  <span className="text-[10px] font-mono font-bold tracking-[0.4em] text-[#00FFCC] uppercase">TACTICAL_OVERVIEW</span>
+                  <span className="text-[10px] font-mono font-bold tracking-[0.4em] text-[#00FFCC] uppercase">OVERVIEW</span>
                 </div>
-                <h1 className="font-outfit text-4xl font-black tracking-tighter uppercase text-white">COMMAND_CENTER</h1>
+                <h1 className="font-outfit text-4xl font-black tracking-tighter uppercase text-white">ADMIN DASHBOARD</h1>
              </div>
              
              <div className="flex gap-4 mt-6 md:mt-0">
-                <button className="px-6 py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 transition-all font-mono text-[9px] font-black tracking-widest uppercase">
-                   Export_Report
-                </button>
-                <button className="px-6 py-2.5 bg-[#00FFCC] text-black hover:brightness-110 transition-all font-mono text-[9px] font-black tracking-widest uppercase shadow-[0_0_20px_rgba(0,255,204,0.2)]">
-                   New_Incident
-                </button>
+                 <button className="px-6 py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 transition-all font-mono text-[9px] font-black tracking-widest uppercase">
+                    Export
+                 </button>
+                 <button className="px-6 py-2.5 bg-[#00FFCC] text-black hover:brightness-110 transition-all font-mono text-[9px] font-black tracking-widest uppercase shadow-[0_0_20px_rgba(0,255,204,0.2)]">
+                    Report Incident
+                 </button>
              </div>
           </div>
 
           {/* Quick Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 animate-fade-in">
-             <StatCard label="Total_Incidents" value="1,452" trend={12} icon={AlertTriangle} color="#ef4444" />
-             <StatCard label="Active_Resources" value="405" trend={-4} icon={Database} color="#3b82f6" />
-             <StatCard label="Resolution_Rate" value="94.2%" trend={3} icon={Activity} color="#10b981" />
-             <StatCard label="Node_Latency" value="4ms" trend={-15} icon={Radio} color="#a855f7" />
+           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 animate-fade-in">
+             <StatCard label="Total Reports" value={stats.total} trend={12} icon={AlertTriangle} color="#ef4444" />
+             <StatCard label="Active Alerts" value={stats.active} trend={-4} icon={Database} color="#3b82f6" />
+             <StatCard label="Avg Response" value={`${stats.avgResponseTime.toFixed(1)}m`} trend={3} icon={Activity} color="#10b981" />
+             <StatCard label="Resolved" value={stats.resolved} trend={2} icon={Radio} color="#a855f7" />
           </div>
 
           {/* ── Main Workspace Grid ── */}
           <div className="grid grid-cols-12 gap-6 lg:gap-14">
 
             {/* Workflow: Sticky Top Strip */}
-            <div className="col-span-12 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-              <PanelContainer label="INCIDENT_LIFECYCLE_STAGE" accent="#00FFCC">
+             <div className="col-span-12 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+              <PanelContainer label="RESPONSE STATUS" accent="#00FFCC">
                 <WorkflowPanel />
               </PanelContainer>
             </div>
 
             {/* Left Column: Alerts & Comms */}
             <div className="col-span-12 lg:col-span-4 flex flex-col gap-8">
-               <div className="h-[550px] animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                  <PanelContainer label="CRITICAL_THREAT_VECTORS" accent="#ef4444" status="MONITORING">
+                <div className="h-[550px] animate-slide-up" style={{ animationDelay: '0.2s' }}>
+                  <PanelContainer label="LIVE ALERTS" accent="#ef4444" status="MONITORING">
                     <LiveAlertsPanel />
                   </PanelContainer>
                </div>
                <div className="h-[430px] animate-slide-up" style={{ animationDelay: '0.4s' }}>
-                  <PanelContainer label="INTERNAL_UPLINK_COMMUNICATIONS" accent="#a855f7">
+                  <PanelContainer label="TEAM CHAT" accent="#a855f7">
                     <CommunicationPanel />
                   </PanelContainer>
                </div>
@@ -146,43 +176,43 @@ export default function DashboardMain() {
 
             {/* Right Column: Map & Analytics */}
             <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 lg:gap-14">
-               <div className="h-[600px] animate-slide-up" style={{ animationDelay: '0.3s' }}>
-                  <PanelContainer label="REALTIME_GEOSPATIAL_INTEL" accent="#3b82f6" status="LIVE">
+                <div className="h-[600px] animate-slide-up" style={{ animationDelay: '0.3s' }}>
+                  <PanelContainer label="LIVE MAP VIEW" accent="#3b82f6" status="LIVE">
                     <MapPanel />
                   </PanelContainer>
                </div>
                
                <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-14">
-                  <div className="h-[450px] md:h-[400px] animate-slide-up" style={{ animationDelay: '0.5s' }}>
-                     <PanelContainer label="ANALYTICS_&_TRENDS" accent="#f59e0b">
-                        <AnalyticsPanel />
-                     </PanelContainer>
-                  </div>
-                  <div className="h-[450px] md:h-[400px] animate-slide-up" style={{ animationDelay: '0.6s' }}>
-                     <PanelContainer label="PENDING_OPERATIONAL_ACTIONS" accent="#ef4444">
-                        <IncidentActionPanel />
-                     </PanelContainer>
-                  </div>
+                   <div className="h-[450px] md:h-[400px] animate-slide-up" style={{ animationDelay: '0.5s' }}>
+                      <PanelContainer label="DATA TRENDS" accent="#f59e0b">
+                         <AnalyticsPanel />
+                      </PanelContainer>
+                   </div>
+                   <div className="h-[450px] md:h-[400px] animate-slide-up" style={{ animationDelay: '0.6s' }}>
+                      <PanelContainer label="TASKS & ACTIONS" accent="#ef4444">
+                         <IncidentActionPanel />
+                      </PanelContainer>
+                   </div>
                </div>
             </div>
 
             {/* Bottom: Resource Tracking (Full Width) */}
-            <div className="col-span-12 animate-slide-up" style={{ animationDelay: '0.7s' }}>
-               <PanelContainer label="ASSET_DEPLOYMENT_&_LOGISTICS" accent="#10b981">
-                  <ResourceTrackingPanel />
-               </PanelContainer>
-            </div>
+             <div className="col-span-12 animate-slide-up" style={{ animationDelay: '0.7s' }}>
+                <PanelContainer label="RESOURCE TRACKING" accent="#10b981">
+                   <ResourceTrackingPanel />
+                </PanelContainer>
+             </div>
           </div>
 
           {/* Footer Metadata */}
           <div className="mt-20 flex flex-col md:flex-row justify-between items-center gap-8 border-t border-white/5 pt-10 pb-10">
-             <div className="flex gap-10 text-[9px] font-mono text-white/10 uppercase tracking-[0.5em] font-black">
-                <span className="flex items-center gap-3"><Clock size={12} />SYSTEM_UPTIME: 99.99%</span>
-                <span className="flex items-center gap-3"><Lock size={12} />AES_256_ACTIVE</span>
-             </div>
-             <div className="text-[9px] font-mono text-white/5 uppercase tracking-[0.8em] font-black">
-                CRISISCHAIN // TACTICAL_INTERFACE // V5.4.1
-             </div>
+              <div className="flex gap-10 text-[9px] font-mono text-white/10 uppercase tracking-[0.5em] font-black">
+                 <span className="flex items-center gap-3"><Clock size={12} />NETWORK STATUS: 99.9%</span>
+                 <span className="flex items-center gap-3"><Lock size={12} />SECURE CONNECTION</span>
+              </div>
+              <div className="text-[9px] font-mono text-white/5 uppercase tracking-[0.8em] font-black">
+                 CRISISCHAIN // DISASTER RESPONSE // V5.0
+              </div>
           </div>
         </div>
       </main>

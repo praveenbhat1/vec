@@ -25,20 +25,22 @@ function SuspenseFallback() {
 function App() {
   return (
     <Router>
-      <Suspense fallback={<SuspenseFallback />}>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/dashboard" element={<DashboardProvider><DashboardMain /></DashboardProvider>} />
-          <Route path="/resources" element={<DashboardProvider><ResourceInventory /></DashboardProvider>} />
-          <Route path="/login"    element={<LoginPage />} />
-          <Route path="/register" element={<SignUpPage />} />
-          <Route path="/report"   element={<ReportIncident />} />
-          <Route path="/analytics" element={<DashboardProvider><Analytics /></DashboardProvider>} />
-          <Route path="/alerts"    element={<DashboardProvider><Alerts /></DashboardProvider>} />
-          <Route path="/settings"  element={<DashboardProvider><Settings /></DashboardProvider>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+      <DashboardProvider>
+        <Suspense fallback={<SuspenseFallback />}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/dashboard" element={<DashboardMain />} />
+            <Route path="/resources" element={<ResourceInventory />} />
+            <Route path="/login"    element={<LoginPage />} />
+            <Route path="/register" element={<SignUpPage />} />
+            <Route path="/report"   element={<ReportIncident />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/alerts"    element={<Alerts />} />
+            <Route path="/settings"  element={<Settings />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </DashboardProvider>
     </Router>
   );
 }

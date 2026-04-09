@@ -42,7 +42,7 @@ export default function TopNavbar() {
     const unreadCount = alerts.filter(a => a.critical).length;
 
     const handleLogout = () => {
-        addToast('Terminating session...', 'info');
+        addToast('Logging out...', 'info');
         setTimeout(() => {
             navigate('/');
         }, 800);
@@ -80,10 +80,10 @@ export default function TopNavbar() {
             {/* Strategic Feed (Header) */}
             <div className="hidden xl:flex items-center gap-16 font-mono text-[9px] tracking-[0.5em] text-white/20 uppercase border-r border-white/5 pr-12 py-3">
                <div className="flex flex-col items-start gap-2">
-                   <div className="flex items-center gap-3">
-                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_#10b981]" />
-                      <span className="text-white/40 font-black">SYSTEM_OPERATIONAL</span>
-                   </div>
+                    <div className="flex items-center gap-3">
+                       <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_#10b981]" />
+                       <span className="text-white/40 font-black">OPERATIONS ACTIVE</span>
+                    </div>
                    <div className="flex items-center gap-3">
                       <Activity className="w-3.5 h-3.5 text-blue-500" />
                       <span>Connectivity: 98%</span>
@@ -118,9 +118,9 @@ export default function TopNavbar() {
                     {isNotifOpen && (
                         <div className="absolute right-0 top-16 w-[380px] bg-[#0E1015] border border-white/10 shadow-[0_30px_70px_rgba(0,0,0,0.8)] z-[100] animate-fade-in overflow-hidden">
                             <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-                                <div className="flex items-center gap-3">
+                                 <div className="flex items-center gap-3">
                                     <Bell size={14} className="text-red-500" />
-                                    <span className="font-outfit font-black text-sm text-white uppercase tracking-wider">Emergency Pipeline</span>
+                                    <span className="font-outfit font-black text-sm text-white uppercase tracking-wider">Activity Feed</span>
                                 </div>
                                 <span className="font-mono text-[8px] text-white/20 uppercase tracking-widest">{unreadCount} Pending</span>
                             </div>
@@ -146,8 +146,8 @@ export default function TopNavbar() {
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="p-12 text-center text-[10px] font-mono text-white/10 uppercase tracking-[0.5em]">
-                                        NO_ACTIVE_INCIDENTS
+                                     <div className="p-12 text-center text-[10px] font-mono text-white/10 uppercase tracking-[0.5em]">
+                                        NO ACTIVE REPORTS
                                     </div>
                                 )}
                             </div>
@@ -175,8 +175,8 @@ export default function TopNavbar() {
                         <div className={`w-10 h-10 bg-black border flex items-center justify-center transition-all duration-500 ${isUserOpen ? 'border-white/40' : 'border-white/10 group-hover:border-red-500/40'}`}>
                             <User className={`w-5 h-5 transition-colors ${isUserOpen ? 'text-white font-black' : 'text-white/20 group-hover:text-red-500'}`} />
                         </div>
-                        <div className="hidden sm:flex flex-col items-start leading-tight">
-                            <span className={`text-[11px] font-outfit font-black uppercase tracking-wider transition-colors ${isUserOpen ? 'text-white' : 'text-white'}`}>Commander Alex</span>
+                         <div className="hidden sm:flex flex-col items-start leading-tight">
+                            <span className={`text-[11px] font-outfit font-black uppercase tracking-wider transition-colors ${isUserOpen ? 'text-white' : 'text-white'}`}>Alex Johnson</span>
                             <div className="flex items-center gap-3 mt-1">
                                 <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_8px_#10b981] ${isUserOpen ? 'bg-white' : 'bg-emerald-500'}`} />
                                 <span className={`text-[9px] font-mono font-bold tracking-[0.3em] uppercase transition-colors ${isUserOpen ? 'text-white/60' : 'text-emerald-500'}`}>Authenticated</span>
@@ -196,8 +196,8 @@ export default function TopNavbar() {
                                 onClick={handleLogout}
                                 className="w-full flex items-center gap-4 px-6 py-5 hover:bg-red-600/10 transition-colors group/logout"
                              >
-                                <LogOut size={14} className="text-red-500" />
-                                <span className="font-mono text-[9px] font-black text-red-500 uppercase tracking-widest">Logout Session</span>
+                                 <LogOut size={14} className="text-red-500" />
+                                <span className="font-mono text-[9px] font-black text-red-500 uppercase tracking-widest">Logout</span>
                              </button>
                         </div>
                     )}

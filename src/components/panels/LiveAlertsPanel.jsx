@@ -4,7 +4,7 @@ import { ShieldAlert, Zap, Clock, Terminal, Activity, ChevronRight, Activity as 
 
 export default function LiveAlertsPanel() {
     const navigate = useNavigate();
-    const { alerts, getIcon, addToast } = useDashboard();
+    const { alerts, getIcon, addToast, updateStatus, user } = useDashboard();
     const criticalCount = alerts.filter(a => a.critical).length;
 
     return (
@@ -21,13 +21,13 @@ export default function LiveAlertsPanel() {
                         {criticalCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-400 rounded-full animate-ping" />}
                     </div>
                     <div>
-                        <h4 className="font-outfit font-black text-xl tracking-tight text-white uppercase leading-none mb-1">THREAT_INTAKE</h4>
-                        <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-white/30 uppercase">SYSTEM_NODES: {alerts.length} ACTIVE</p>
+                        <h4 className="font-outfit font-black text-xl tracking-tight text-white uppercase leading-none mb-1">LIVE INCIDENTS</h4>
+                        <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-white/30 uppercase">MONITORING: {alerts.length} AREAS</p>
                     </div>
                 </div>
                 {criticalCount > 0 && (
                     <div className="px-5 py-2 bg-red-500/10 border border-red-500/20 text-red-500 font-mono text-[9px] font-black tracking-widest uppercase animate-pulse">
-                        {criticalCount} CRITICAL_HITS
+                        {criticalCount} URGENT
                     </div>
                 )}
             </div>
@@ -61,15 +61,37 @@ export default function LiveAlertsPanel() {
                                     </h5>
                                     <span className="font-mono text-[9px] text-white/20 tracking-widest font-bold uppercase transition-transform group-hover/alert:translate-x-2">[{alert.time}]</span>
                                 </div>
-                                <p className="font-mono text-[10px] text-white/30 uppercase italic tracking-tighter line-clamp-1">SECTOR_ID: {alert.location}</p>
+                                <p className="font-mono text-[10px] text-white/30 uppercase italic tracking-tighter line-clamp-1">LOCATION: {alert.location}</p>
                                 
                                 <div className="flex items-center gap-4 mt-2">
                                     <div className="px-3 py-1 bg-white/5 border border-white/5 font-mono text-[8px] font-black tracking-widest uppercase text-white/20">
                                         ID: {Math.random().toString(36).substr(2, 6).toUpperCase()}
                                     </div>
                                     <div className={`px-3 py-1 border font-mono text-[8px] font-black tracking-widest uppercase ${alert.critical ? 'border-red-500/20 text-red-500 bg-red-500/5' : 'border-blue-500/20 text-blue-400 bg-blue-500/5'}`}>
-                                        {alert.critical ? 'CRITICAL_ALPHA' : 'STABLE_BETA'}
+                                        {alert.status === 'active' ? 'ACTIVE_UNASSIGNED' : alert.status === 'responding' ? 'RESPONDERS_DISPATCHED' : 'RESOLVED'}
                                     </div>
+                                    
+                                    {/* Responder Actions */}
+                                    {(user?.role === 'responder' || user?.role === 'admin') && (
+                                       <div className="flex gap-2">
+                                          {alert.status === 'active' && (
+                                            <button 
+                                              onClick={async (e) => { e.stopPropagation(); await updateStatus(alert.id, 'responding'); }}
+                                              className="px-3 py-1 bg-blue-600 text-white font-mono text-[8px] font-black uppercase hover:bg-blue-700"
+                                            >
+                                              Dispatch
+                                            </button>
+                                          )}
+                                          {alert.status === 'responding' && (
+                                            <button 
+                                              onClick={async (e) => { e.stopPropagation(); await updateStatus(alert.id, 'resolved'); }}
+                                              className="px-3 py-1 bg-green-600 text-white font-mono text-[8px] font-black uppercase hover:bg-green-700"
+                                            >
+                                              Resolve
+                                            </button>
+                                          )}
+                                       </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -80,12 +102,12 @@ export default function LiveAlertsPanel() {
             <div className="p-10 border-t border-white/5 bg-black/40">
                 <button
                     onClick={() => {
-                        addToast('Opening strategic cortex…', 'info');
+                        addToast('Opening Alert Feed…', 'info');
                         navigate('/alerts');
                     }}
                     className="w-full h-12 bg-white/[0.03] hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all font-mono text-[10px] font-black tracking-[0.5em] text-white/40 hover:text-[#00FFCC] uppercase"
                 >
-                    INITIALIZE_FULL_UPLINK
+                    VIEW ALL ALERTS
                 </button>
             </div>
             

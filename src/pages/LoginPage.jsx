@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useDashboard } from '../context/DashboardContext';
 import { 
   Shield, 
   Mail, 
@@ -16,13 +17,14 @@ import {
 } from 'lucide-react';
 
 const LIVE_STATS = [
-  { label: 'ACTIVE_SCENARIOS', value: '24', color: '#ef4444' },
-  { label: 'NODES_ONLINE', value: '312', color: '#00F0FF' },
-  { label: 'LIVES_SAVED', value: '10K+', color: '#10b981' },
+  { label: 'ACTIVE INCIDENTS', value: '24', color: '#ef4444' },
+  { label: 'RESPONDERS ONLINE', value: '312', color: '#00F0FF' },
+  { label: 'LIVES PROTECTED', value: '10K+', color: '#10b981' },
 ];
 
 export default function LoginPage() {
   const nav = useNavigate();
+  const { login } = useDashboard();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -32,6 +34,7 @@ export default function LoginPage() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     const handleMouseMove = (e) => {
       setMousePos({ x: e.clientX, y: e.clientY });
     };
@@ -39,13 +42,20 @@ export default function LoginPage() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (!email.trim()) { setError('Please enter your email address.'); return; }
     if (!password) { setError('Please enter your password.'); return; }
     setLoading(true);
-    setTimeout(() => { setLoading(false); nav('/dashboard'); }, 1400);
+    try {
+      await login({ email, password });
+      setLoading(false); 
+      nav('/dashboard');
+    } catch (err) {
+      setLoading(false);
+      setError(err.response?.data?.error || 'Authentication Failed. Integrity Check Error.');
+    }
   };
 
   return (
@@ -75,7 +85,7 @@ export default function LoginPage() {
           </div>
           <div className="flex flex-col gap-0 leading-none">
             <span className="font-outfit font-black text-2xl tracking-tighter uppercase">CRISISCHAIN</span>
-            <span className="text-[10px] font-mono text-blue-400 tracking-[0.4em] opacity-60 uppercase">Tactical_Protocol_v5.4</span>
+            <span className="text-[10px] font-mono text-blue-400 tracking-[0.4em] opacity-60 uppercase">Responder Network v5.4</span>
           </div>
         </Link>
 
@@ -90,7 +100,7 @@ export default function LoginPage() {
             <span className="bg-gradient-to-r from-[#00FFCC] via-white to-white/40 bg-clip-text text-transparent italic">CENTER_ACCESS</span>
           </h1>
           <p className="text-white/40 text-lg font-light leading-relaxed max-w-sm">
-            Synchronizing global assets and emergency responder nodes. Enter your credentials to initialize secure session.
+            Access the centralized crisis management dashboard to coordinate real-time response efforts.
           </p>
         </div>
 
@@ -118,11 +128,11 @@ export default function LoginPage() {
             <Link to="/" className="lg:hidden flex items-center gap-2 text-[10px] font-mono text-[#00FFCC] uppercase tracking-widest mb-8">
               <ChevronLeft className="w-4 h-4" /> Back to Intelligence
             </Link>
-            <span className="text-[9px] font-mono text-blue-400 tracking-[0.6em] uppercase block mb-4">Cortex_Login</span>
+            <span className="text-[9px] font-mono text-blue-400 tracking-[0.6em] uppercase block mb-4">Login Portal</span>
             <h2 className="font-outfit text-5xl font-black tracking-tighter uppercase leading-none mb-4">
               WELCOME_BACK
             </h2>
-            <p className="text-white/40 font-light">Initialize tactical interface for incident management.</p>
+            <p className="text-white/40 font-light">Access your operational dashboard to manage ongoing incidents.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -135,7 +145,7 @@ export default function LoginPage() {
                   type="email" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="IDENTITY_EMAIL"
+                  placeholder="BUSINESS_EMAIL"
                   className="w-full bg-white/5 border border-white/5 backdrop-blur-xl px-14 py-5 text-white placeholder:text-white/20 focus:outline-none focus:border-[#00FFCC]/40 focus:bg-white/[0.08] transition-all font-mono text-sm tracking-widest"
                 />
               </div>
@@ -148,7 +158,7 @@ export default function LoginPage() {
                   type={showPw ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="PASSCODE_TOKEN"
+                  placeholder="PASSWORD"
                   className="w-full bg-white/5 border border-white/5 backdrop-blur-xl px-14 py-5 text-white placeholder:text-white/20 focus:outline-none focus:border-[#00FFCC]/40 focus:bg-white/[0.08] transition-all font-mono text-sm tracking-widest"
                 />
                 <button 
@@ -174,7 +184,7 @@ export default function LoginPage() {
                   {remember && <div className="w-2 h-2 bg-[#00FFCC]" />}
                 </div>
                 <input type="checkbox" className="hidden" checked={remember} onChange={() => setRemember(!remember)} />
-                <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Persist_Session</span>
+                <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Keep me signed in</span>
               </label>
               <button type="button" className="text-[10px] font-mono text-blue-400 hover:text-[#00FFCC] transition-colors uppercase tracking-widest">
                 Forgot_Passcode?
@@ -188,7 +198,7 @@ export default function LoginPage() {
             >
               <div className="relative z-10 flex items-center justify-center gap-4">
                 <span className={`text-xl font-outfit font-black uppercase tracking-widest transition-colors duration-700 ${loading ? 'text-white/40' : 'group-hover:text-black text-[#00FFCC]'}`}>
-                  {loading ? 'AUTHENTICATING...' : 'INITIALIZE_COMMAND'}
+                  {loading ? 'AUTHENTICATING...' : 'ENTER LOGIN'}
                 </span>
                 {!loading && <ArrowRight className="w-6 h-6 text-[#00FFCC] group-hover:text-black transition-colors" />}
               </div>
@@ -206,7 +216,7 @@ export default function LoginPage() {
              </div>
 
              <p className="text-center text-[10px] font-mono text-white/30 uppercase tracking-[0.2em]">
-               New Sentinel? <Link to="/register" className="text-[#00FFCC] hover:underline">Register_Identity</Link>
+               New responder? <Link to="/register" className="text-[#00FFCC] hover:underline">Create Account</Link>
              </p>
           </div>
         </div>

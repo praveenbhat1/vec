@@ -171,13 +171,14 @@ export default function Analytics() {
     return (
         <div className="flex h-screen w-full overflow-hidden bg-[#08080A] text-[#E5E5E7] font-inter">
             
-            {/* ── AMBIENT HUD ARCHITECTURE ── */}
-            <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-[0.03]">
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,204,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,204,0.01)_1px,transparent_1px)] bg-[size:100px_100px]" />
+            {/* ── AMBIENT MESH BACKGROUND (Synced with Resource Hub) ── */}
+            <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
                 <div 
-                  className="absolute w-[800px] h-[800px] rounded-full blur-[180px] bg-[#00FFCC] transition-transform duration-1000"
-                  style={{ transform: `translate(${mousePos.x - 400}px, ${mousePos.y - 400}px)` }}
+                  className="absolute w-[1000px] h-[1000px] rounded-full blur-[200px] opacity-[0.05] bg-blue-600 transition-transform duration-1000 ease-out"
+                  style={{ transform: `translate(${mousePos.x - 500}px, ${mousePos.y - 500}px)` }}
                 />
+                <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] rounded-full blur-[180px] opacity-[0.03] bg-cyan-500 animate-pulse" />
+                <div className="absolute inset-0 opacity-[0.02] contrast-150 brightness-150 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
             </div>
 
             <Sidebar />
@@ -197,10 +198,10 @@ export default function Analytics() {
                         <div className="space-y-3">
                             <div className="flex items-center gap-3">
                                 <Activity size={14} className="text-[#00FFCC]" />
-                                <span className="text-[10px] font-mono font-bold tracking-[0.5em] text-[#00FFCC] uppercase">INTELLIGENCE_METRICS</span>
+                                <span className="text-[10px] font-mono font-bold tracking-[0.5em] text-[#00FFCC] uppercase">PERFORMANCE_ANALYTICS</span>
                             </div>
                             <h1 className="font-outfit text-4xl lg:text-5xl font-black tracking-tighter uppercase text-white leading-none">
-                                CORTEX<span className="text-white/20">://</span>ANALYTICS
+                                SYSTEM<span className="text-white/20">://</span>ANALYTICS
                             </h1>
                         </div>
                         
@@ -228,7 +229,7 @@ export default function Analytics() {
                     <div className="grid grid-cols-12 gap-8 mb-10 lg:mb-14">
                         {/* Incident Trends: Line Chart */}
                         <div className="col-span-12 lg:col-span-8 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                            <AnalyticsCard label="INCIDENT_TRAJECTORY_SYNC" accent="#3b82f6">
+                            <AnalyticsCard label="INCIDENT_TREND_ANALYSIS" accent="#3b82f6">
                                 <div className="h-[300px] md:h-[400px] w-full">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={INCIDENT_TREND_DATA} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
@@ -278,7 +279,7 @@ export default function Analytics() {
 
                         {/* Incident Type: Pie Chart */}
                         <div className="col-span-12 lg:col-span-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                            <AnalyticsCard label="VECTOR_TAXONOMY_DIST" accent="#f59e0b">
+                            <AnalyticsCard label="INCIDENT_CATEGORY_DIST" accent="#f59e0b">
                                 <div className="h-[300px] md:h-[400px] w-full relative flex flex-col items-center">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
@@ -321,7 +322,7 @@ export default function Analytics() {
                     <div className="grid grid-cols-12 gap-8 mb-10 lg:mb-14">
                         {/* Region Analysis: Bar Chart */}
                         <div className="col-span-12 lg:col-span-7 animate-slide-up" style={{ animationDelay: '0.3s' }}>
-                            <AnalyticsCard label="GEOSPATIAL_LOAD_INTEL" accent="#a855f7">
+                            <AnalyticsCard label="REGIONAL_LOAD_OVERVIEW" accent="#a855f7">
                                 <div className="h-[300px] md:h-[350px] w-full">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={REGION_DATA} margin={{ top: 20, right: 10, left: -20, bottom: 0 }} barGap={0}>
@@ -358,7 +359,7 @@ export default function Analytics() {
 
                         {/* Resource Utilization: Progress Bars */}
                         <div className="col-span-12 lg:col-span-5 animate-slide-up" style={{ animationDelay: '0.4s' }}>
-                            <AnalyticsCard label="ASSET_SATURATION_TELEM" accent="#10b981">
+                            <AnalyticsCard label="RESOURCE_ALLOCATION" accent="#10b981">
                                 <div className="space-y-6 md:space-y-8 py-2 md:py-4">
                                     {RESOURCE_UTILIZATION.map((item, i) => (
                                         <div key={i} className="space-y-2 md:space-y-3">
@@ -397,7 +398,7 @@ export default function Analytics() {
                     {/* ── RESPONSE TIME SECTION ── */}
                     <div className="grid grid-cols-12 gap-8 mb-10 lg:mb-14">
                         <div className="col-span-12 animate-slide-up" style={{ animationDelay: '0.5s' }}>
-                            <AnalyticsCard label="TEMPORAL_RESPONSE_INDEX" accent="#a855f7">
+                            <AnalyticsCard label="RESPONSE_TIME_DIST" accent="#a855f7">
                                 <div className="h-[250px] md:h-[300px] w-full">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <AreaChart data={RESPONSE_TIME_DATA} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
@@ -444,9 +445,9 @@ export default function Analytics() {
                                 <div className="flex flex-col gap-2">
                                     <div className="flex items-center gap-3">
                                         <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                        <span className="font-mono text-[9px] font-black text-white/40 tracking-[0.3em] uppercase">SYSTEM_ACTIVITY_JOURNAL</span>
+                                        <span className="font-mono text-[9px] font-black text-white/40 tracking-[0.3em] uppercase">SYSTEM_ACTIVITY_LOG</span>
                                     </div>
-                                    <h3 className="font-outfit font-black text-xl text-white uppercase tracking-tight">RECENT_PROTOCOL_EVENTS</h3>
+                                    <h3 className="font-outfit font-black text-xl text-white uppercase tracking-tight">RECENT_EVENT_LOG</h3>
                                 </div>
                                 <div className="flex gap-4">
                                      <button className="flex-1 md:flex-none p-2.5 bg-white/5 border border-white/10 text-white/40 hover:text-white transition-all flex justify-center">
