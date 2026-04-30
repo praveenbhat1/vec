@@ -28,6 +28,18 @@ import { useDashboard } from '../context';
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
+// Static fallback markers shown when no live incidents have coords
+const STATIC_INCIDENTS = [
+  { coords: [-74.006,  40.7128], type: 'CRITICAL',   label: 'Cyclone – Coastal Zone 4',      time: '2 min ago',  color: '#ef4444' },
+  { coords: [139.6917, 35.6895], type: 'DISPATCHED', label: 'Fire – Industrial Sector B',     time: '5 min ago',  color: '#3b82f6' },
+  { coords: [31.2357,  30.0444], type: 'LIVE',       label: 'Flood – River Valley',           time: '1 min ago',  color: '#ef4444' },
+  { coords: [-43.1729,-22.9068], type: 'CRITICAL',   label: 'Tectonic Alert – Sector G',      time: '12 min ago', color: '#ef4444' },
+  { coords: [77.2090,  28.6139], type: 'MONITORING', label: 'Heatwave – Central Hub',         time: 'Just now',   color: '#3b82f6' },
+  { coords: [74.8431,  12.8698], type: 'LIVE',       label: 'Fire – Mangaluru Port',          time: 'Just now',   color: '#f97316' },
+  { coords: [80.2707,  13.0827], type: 'DISPATCHED', label: 'Flood – Chennai Coast',          time: '8 min ago',  color: '#3b82f6' },
+  { coords: [72.8777,  19.0760], type: 'CRITICAL',   label: 'Cyclone – Mumbai Coastline',     time: '3 min ago',  color: '#ef4444' },
+];
+
 // --- SUB-COMPONENT FOR GLOBE TO PREVENT FULL PAGE RE-RENDERS ---
 const GlobeView = ({ hoveredMarker, setHoveredMarker, onEnter, onLeave }) => {
   const [rotation, setRotation] = useState(0);
@@ -37,22 +49,28 @@ const GlobeView = ({ hoveredMarker, setHoveredMarker, onEnter, onLeave }) => {
     const isMobile = window.innerWidth < 1024;
     const rotateInterval = setInterval(() => {
       setRotation(prev => (prev + (isMobile ? 0.3 : 0.5)) % 360);
-    }, 50);
+    }, isMobile ? 100 : 50);
     return () => clearInterval(rotateInterval);
   }, []);
 
+  // Use live incidents from DB if they have coords, else fall back to static markers
   const incidents = React.useMemo(() => {
-    return rawIncidents.map(inc => ({
-      ...inc,
-      coords: { 
-        lat: parseFloat(inc.lat || inc.latitude || 0), 
-        lng: parseFloat(inc.lng || inc.longitude || 0) 
-      },
-      type: (inc.priority || inc.status || 'LIVE').toUpperCase(),
-      label: inc.title || inc.description || 'Incident',
-      time: 'LIVE',
-      color: inc.priority === 'high' ? '#ef4444' : '#3b82f6'
-    })).filter(inc => inc.coords.lat !== 0 || inc.coords.lng !== 0);
+    const live = rawIncidents
+      .map(inc => ({
+        coords: [
+          parseFloat(inc.longitude || inc.lng || 0),
+          parseFloat(inc.latitude  || inc.lat  || 0),
+        ],
+        type:  (inc.status || 'LIVE').toUpperCase(),
+        label: inc.title || (inc.type ? inc.type.toUpperCase() + ' INCIDENT' : 'Incident'),
+        time:  inc.time || 'LIVE',
+        color: (inc.severity === 'critical' || inc.severity === 'high')
+          ? '#ef4444'
+          : (inc.severity === 'medium' ? '#f97316' : '#3b82f6'),
+      }))
+      .filter(inc => inc.coords[0] !== 0 || inc.coords[1] !== 0);
+
+    return live.length > 0 ? live : STATIC_INCIDENTS;
   }, [rawIncidents]);
 
   return (
@@ -73,7 +91,7 @@ const GlobeView = ({ hoveredMarker, setHoveredMarker, onEnter, onLeave }) => {
                 strokeWidth={0.5}
                 style={{
                   default: { outline: "none" },
-                  hover: { fill: "rgba(59, 130, 246, 0.1)", outline: "none" },
+                  hover:   { fill: "rgba(59, 130, 246, 0.1)", outline: "none" },
                   pressed: { outline: "none" },
                 }}
               />
@@ -81,36 +99,47 @@ const GlobeView = ({ hoveredMarker, setHoveredMarker, onEnter, onLeave }) => {
           }
         </Geographies>
         
+        {/* Interactive Incident Markers */}
         {incidents.map((inc, i) => (
           <Marker 
             key={i} 
-            coordinates={[inc.coords.lng, inc.coords.lat]}
+            coordinates={inc.coords}
+            onMouseEnter={() => { onEnter(inc); }}
+            onMouseLeave={() => { onLeave(); }}
           >
-            <g 
-              className="cursor-pointer"
-              onMouseEnter={() => onEnter(inc)}
-              onMouseLeave={() => onLeave()}
-            >
-              {/* Hit area - significantly increased for rotating globe */}
-              <circle r={35} fill="transparent" />
-              <circle 
-                r={hoveredMarker === inc ? 7 : 5} 
-                fill={inc.color} 
-                className="animate-pulse transition-all duration-300" 
-                style={{ filter: `drop-shadow(0 0 10px ${inc.color})` }}
-              />
-              <circle r={12} fill={inc.color} className="animate-ping opacity-20" />
-            </g>
+            {/* Outer ping ring */}
+            <circle r={12} fill={inc.color} className="animate-ping" opacity={0.2} />
+            {/* Glowing dot */}
+            <circle 
+              r={hoveredMarker === inc ? 6 : 4}
+              fill={inc.color}
+              style={{ filter: `drop-shadow(0 0 8px ${inc.color})`, transition: 'r 0.3s' }}
+            />
+            {/* Inline SVG Tooltip on hover */}
+            {hoveredMarker === inc && (
+              <g className="pointer-events-none">
+                <rect x={10} y={-44} width={170} height={52} fill="rgba(0,0,0,0.85)" stroke={inc.color} strokeWidth={1} rx={3} />
+                <text x={20} y={-26} fill="white"    fontSize={10} fontWeight="bold"  fontFamily="Outfit">{inc.label.toUpperCase()}</text>
+                <text x={20} y={-12} fill={inc.color} fontSize={8}  fontWeight="black" fontFamily="JetBrains Mono">{inc.type} / {inc.time}</text>
+              </g>
+            )}
           </Marker>
         ))}
 
+        {/* Moving signal dot with bezier arc */}
         <Marker coordinates={[rotation - 20, 45]}>
-           <circle r={1.5} fill="#3b82f6" />
+          <circle r={1.5} fill="#3b82f6" />
+          <path d="M -10 -10 Q 0 -30 10 -10" stroke="#3b82f6" fill="none" strokeWidth={0.5} opacity={0.4} />
+        </Marker>
+        <Marker coordinates={[(rotation + 80) % 360 - 180, -20]}>
+          <circle r={1.5} fill="#00FFCC" />
+          <path d="M -8 -8 Q 0 -24 8 -8" stroke="#00FFCC" fill="none" strokeWidth={0.5} opacity={0.3} />
         </Marker>
       </ComposableMap>
     </div>
   );
 };
+
 
 const LandingPage = () => {
   const { incidents = [], organizations = [], resources = [] } = useDashboard();
@@ -238,56 +267,87 @@ const LandingPage = () => {
       <section className="relative min-h-screen flex items-center pt-32 pb-20 px-8 z-10">
         <div className="max-w-[1400px] mx-auto w-full grid lg:grid-cols-12 gap-8 items-start">
           <div className="lg:col-span-7 flex flex-col items-start pt-12">
+            <div className="flex items-center gap-4 mb-12 animate-fade-in">
+              <div className="h-[1px] w-12 bg-[#00FFCC]/40" />
+              <span className="text-[9px] font-mono tracking-[0.5em] text-[#00FFCC] uppercase">Helping You During Crisis</span>
+            </div>
             <h1 className="font-outfit text-5xl md:text-7xl lg:text-[100px] font-black leading-[0.85] tracking-tighter mb-12 animate-slide-up text-white">
               REAL-TIME <br />
               <span className="text-white/10 stroke-text outline-white/20">DISASTER</span> <br />
               <span className="bg-gradient-to-r from-[#00FFCC] via-white to-white/40 bg-clip-text text-transparent italic">COORDINATION</span>
             </h1>
-            <p className="text-white/60 text-lg md:text-xl font-light leading-relaxed max-w-xl mb-16 animate-fade-in">
+            <p className="text-white/60 text-lg md:text-xl font-light leading-relaxed max-w-xl mb-16 animate-fade-in" style={{ animationDelay: '0.2s' }}>
               Helping hospitals, fire teams, and responders work together in real-time when every second counts.
             </p>
-            <div className="flex flex-col sm:flex-row gap-8 items-center animate-fade-in">
-                <Link to="/report" className="px-10 py-5 bg-red-600/10 border border-red-500/40 hover:bg-red-600/20 transition-all flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row gap-8 items-center animate-fade-in" style={{ animationDelay: '0.4s' }}>
+                <Link to="/report" className="relative group px-10 py-5 bg-red-600/10 border border-red-500/40 hover:bg-red-600/20 transition-all duration-500 flex items-center gap-4">
                   <AlertTriangle className="w-6 h-6 text-red-500 animate-pulse" />
                   <div className="flex flex-col items-start text-left">
                     <span className="text-[8px] font-mono text-white/60 uppercase">CRITICAL PRIORITY</span>
                     <span className="text-xl font-outfit font-black uppercase tracking-tight">🚨 Report Emergency</span>
                   </div>
                 </Link>
-                <Link to="/login" className="px-10 py-5 bg-blue-600/10 border border-blue-500/40 hover:bg-blue-600/20 transition-all flex items-center gap-4">
+                <Link to="/login" className="px-10 py-5 bg-blue-600/10 border border-blue-500/40 hover:bg-blue-600/20 transition-all duration-500 flex items-center gap-4">
                   <Shield className="w-6 h-6 text-blue-500" />
-                  <div className="flex flex-col items-start text-left text-blue-400">
+                  <div className="flex flex-col items-start text-left">
                     <span className="text-[8px] font-mono text-white/60 uppercase">Responder Portal</span>
-                    <span className="text-xl font-outfit font-black uppercase tracking-tight">Login</span>
+                    <span className="text-xl font-outfit font-black uppercase tracking-tight text-blue-400">Login</span>
                   </div>
                 </Link>
             </div>
           </div>
 
-          <div className="lg:col-span-5 h-[450px] md:h-[600px] lg:h-[750px] relative mt-12 lg:mt-0 animate-fade-in">
+          <div className="lg:col-span-5 h-[450px] md:h-[600px] lg:h-[750px] relative mt-12 lg:mt-0 animate-fade-in" style={{ animationDelay: '0.6s' }}>
             <div className="absolute inset-0 bg-blue-600/[0.02] backdrop-blur-3xl border border-white/10 rounded-[40px] flex items-center justify-center overflow-hidden">
+               {/* Radar Sweep Effect */}
                <div className="absolute inset-0 opacity-20 pointer-events-none">
                   <div className="absolute inset-0 bg-gradient-to-tr from-blue-500 to-transparent w-[200%] h-[200%] -top-1/2 -left-1/2 animate-radar-sweep origin-center" />
                </div>
 
-               <div className="absolute top-10 left-10 p-6 bg-black/40 border border-blue-500/20 backdrop-blur-3xl z-40 max-w-[200px]">
-                  <div className="text-[10px] font-mono text-blue-400 uppercase mb-4 flex items-center gap-2">
+               {/* UI Overlays */}
+               <div className="absolute top-5 left-5 lg:top-10 lg:left-10 p-4 lg:p-6 bg-black/40 border border-blue-500/20 backdrop-blur-3xl z-40 max-w-[150px] lg:max-w-[200px] transition-all duration-700 opacity-100">
+                  <div className="text-[8px] lg:text-[10px] font-mono text-blue-400 uppercase mb-4 flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
                     LIVE UPDATES
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-3 lg:space-y-4">
                     <div className="flex justify-between items-end border-b border-white/5 pb-2">
-                       <span className="text-[8px] font-mono text-white/40 uppercase">LATENCY</span>
-                       <span className="text-xs font-outfit text-white">12MS</span>
+                       <span className="text-[7px] lg:text-[8px] font-mono text-white/40">LATENCY</span>
+                       <span className="text-[10px] lg:text-xs font-outfit text-white">12MS</span>
+                    </div>
+                    <div className="flex justify-between items-end border-b border-white/5 pb-2">
+                       <span className="text-[7px] lg:text-[8px] font-mono text-white/40">NODES</span>
+                       <span className="text-[10px] lg:text-xs font-outfit text-white">405 ACTIVE</span>
                     </div>
                   </div>
                </div>
 
+               {/* URGENT ALERTS Overlay */}
+               <div className="absolute bottom-5 right-5 lg:bottom-10 lg:right-10 p-4 lg:p-6 bg-black/40 border border-red-500/20 backdrop-blur-3xl z-40 max-w-[180px] lg:max-w-[240px] transition-all duration-700 opacity-100">
+                  <div className="text-[8px] lg:text-[10px] font-mono text-red-400 uppercase mb-4 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                    URGENT ALERTS
+                  </div>
+                  <div className="space-y-4 max-h-[120px] lg:max-h-[160px] overflow-y-auto pr-2">
+                    {[
+                      { time: '2 MIN AGO', label: 'CYCLONE – COASTAL ZONE 4', color: '#ef4444' },
+                      { time: '1 MIN AGO', label: 'FLOOD – RIVER VALLEY', color: '#ef4444' },
+                      { time: 'JUST NOW', label: 'FIRE – INDUSTRIAL SECTOR', color: '#f97316' },
+                    ].map((inc, i) => (
+                      <div key={i} className="group cursor-pointer hover:bg-white/5 p-2 transition-all">
+                        <div className="text-[8px] font-mono text-red-500 mb-1">{inc.time}</div>
+                        <div className="text-[10px] font-outfit font-bold text-white uppercase">{inc.label}</div>
+                      </div>
+                    ))}
+                  </div>
+               </div>
+
                <div 
-                  className={`relative cursor-crosshair transition-all duration-1000 ease-in-out scale-[2.0] lg:scale-[2.8]`}
+                  className="relative cursor-crosshair transition-all duration-1000 ease-in-out scale-[2.0] lg:scale-[2.8]"
                   onClick={() => setIsZoomed(!isZoomed)}
                >
-                  <div className="absolute border border-blue-500/10 rounded-full animate-spin-slow inset-[-120px] opacity-20" />
+                  <div className="absolute border border-blue-500/10 rounded-full animate-spin-slow inset-[-80px] lg:inset-[-120px] opacity-20" />
+                  <div className="absolute border border-white/5 rounded-full animate-reverse-spin inset-[-40px] lg:inset-[-60px] opacity-10" />
                   <div className="absolute inset-0 bg-blue-500/5 rounded-full blur-3xl opacity-50" />
                   
                   {/* GLOBE COMPONENT */}
@@ -297,6 +357,20 @@ const LandingPage = () => {
                     onEnter={handleMarkerEnter}
                     onLeave={handleMarkerLeave}
                   />
+               </div>
+
+               {/* Bottom Telemetry HUD */}
+               <div className="absolute bottom-10 left-10 right-10 grid grid-cols-2 gap-8 transition-all duration-700 opacity-100 translate-y-0">
+                  <div className="p-4 bg-white/5 border border-white/5 backdrop-blur-xl">
+                    <div className="text-[8px] font-mono text-white/20 uppercase mb-2">SYSTEM LOAD</div>
+                    <div className="h-1 bg-white/10 w-full overflow-hidden">
+                      <div className="h-full bg-[#00FFCC] w-[70%] animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="p-4 bg-white/5 border border-white/5 backdrop-blur-xl">
+                    <div className="text-[8px] font-mono text-white/20 uppercase mb-2">NETWORK HEALTH</div>
+                    <div className="text-xs font-outfit font-black text-[#00FFCC]">OPTIMAL</div>
+                  </div>
                </div>
             </div>
 
@@ -613,11 +687,19 @@ const LandingPage = () => {
       <style dangerouslySetInnerHTML={{ __html: `
         .stroke-text { -webkit-text-stroke: 1px rgba(255,255,255,0.4); text-stroke: 1px rgba(255,255,255,0.4); color: transparent; }
         @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes reverse-spin { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
         @keyframes radar-sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin-slow { animation: spin-slow 20s linear infinite; }
+        .animate-reverse-spin { animation: reverse-spin 15s linear infinite; }
         .animate-radar-sweep { animation: radar-sweep 6s linear infinite; }
         @keyframes scan-y { 0% { transform: translateY(0); } 100% { transform: translateY(100%); } }
         .animate-scan-y { animation: scan-y 4s linear infinite; }
+        @keyframes scan-x { 0% { transform: scaleX(0); transform-origin: left; } 50% { transform: scaleX(1); transform-origin: left; } 51% { transform: scaleX(1); transform-origin: right; } 100% { transform: scaleX(0); transform-origin: right; } }
+        .animate-scan-x { animation: scan-x 3s ease-in-out infinite; }
+        @keyframes slide-up { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-slide-up { animation: slide-up 0.8s ease-out forwards; }
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-in { animation: fade-in 1s ease-out forwards; }
       `}} />
     </div>
   );
