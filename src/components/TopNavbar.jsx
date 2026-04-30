@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useDashboard } from '../context/DashboardContext';
+import { useDashboard } from '../context';
 import { Search, Bell, Menu, User, ChevronDown, Shield, Zap, Globe, Terminal, Clock, Activity, Settings, AlertTriangle, CheckCircle2, Info, LogOut } from 'lucide-react';
 
 const W_CLOSED = 80;
@@ -11,7 +11,7 @@ export default function TopNavbar() {
     const [time, setTime] = useState(new Date());
     const [isNotifOpen, setIsNotifOpen] = useState(false);
     const [isUserOpen, setIsUserOpen] = useState(false);
-    const { isSidebarOpen, toggleSidebar, addToast, alerts } = useDashboard();
+    const { isSidebarOpen, toggleSidebar, addToast, incidents, profile, user, logout, refreshData } = useDashboard();
     const navigate = useNavigate();
     const notifRef = useRef(null);
     const userRef = useRef(null);
@@ -39,13 +39,22 @@ export default function TopNavbar() {
     const timeStr = time.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const dateStr = time.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
 
-    const unreadCount = alerts.filter(a => a.critical).length;
+    const unreadCount = (incidents || []).filter(a => a.critical).length;
 
-    const handleLogout = () => {
-        addToast('Logging out...', 'info');
-        setTimeout(() => {
-            navigate('/');
-        }, 800);
+    const handleLogout = async (e) => {
+        if (e) e.stopPropagation();
+        console.log("TopNavbar: Initiating logout sequence...");
+        addToast('Terminating session...', 'info');
+        try {
+            await logout();
+            console.log("TopNavbar: Logout successful, navigating to landing.");
+            navigate('/', { replace: true });
+        } catch (err) {
+            console.error("TopNavbar: Logout error:", err);
+            navigate('/', { replace: true });
+        } finally {
+            setIsUserOpen(false);
+        }
     };
 
     return (
@@ -99,8 +108,25 @@ export default function TopNavbar() {
                </div>
             </div>
 
-            {/* Action Cluster */}
             <div className="flex items-center gap-8 ml-auto relative">
+                {/* REFRESH BUTTON */}
+                <button 
+                    onClick={async () => {
+                        addToast('Synchronizing tactical data...', 'info');
+                        if (typeof refreshData === 'function') {
+                            await refreshData();
+                            addToast('Data synchronized', 'success');
+                        } else {
+                            console.error("TopNavbar: refreshData is not available in context");
+                        }
+                    }}
+                    className="flex flex-col items-center justify-center w-12 h-12 bg-white/5 border border-white/5 hover:border-[#00FFCC]/40 hover:bg-[#00FFCC]/5 transition-all group"
+                    title="Manual Data Sync"
+                >
+                    <Zap className="w-4 h-4 text-white/20 group-hover:text-[#00FFCC]" />
+                </button>
+
+                <div className="h-6 w-[2px] bg-white/5" />
                 
                 {/* NOTIFICATIONS PANEL WRAPPER */}
                 <div className="relative" ref={notifRef}>
@@ -126,8 +152,8 @@ export default function TopNavbar() {
                             </div>
 
                             <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
-                                {alerts.length > 0 ? (
-                                    alerts.slice(0, 5).map((alert, i) => (
+                                {incidents && incidents.length > 0 ? (
+                                    incidents.slice(0, 5).map((alert, i) => (
                                         <div key={alert.id} className="p-5 border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors group/notif cursor-pointer">
                                             <div className="flex gap-4">
                                                 <div className={`mt-1 w-8 h-8 flex-shrink-0 flex items-center justify-center border ${alert.critical ? 'border-red-500/20 text-red-500 bg-red-500/5' : 'border-blue-500/20 text-blue-500 bg-blue-500/5'}`}>
@@ -176,7 +202,7 @@ export default function TopNavbar() {
                             <User className={`w-5 h-5 transition-colors ${isUserOpen ? 'text-white font-black' : 'text-white/20 group-hover:text-red-500'}`} />
                         </div>
                          <div className="hidden sm:flex flex-col items-start leading-tight">
-                            <span className={`text-[11px] font-outfit font-black uppercase tracking-wider transition-colors ${isUserOpen ? 'text-white' : 'text-white'}`}>Alex Johnson</span>
+                            <span className={`text-[11px] font-outfit font-black uppercase tracking-wider transition-colors ${isUserOpen ? 'text-white' : 'text-white'}`}>{profile?.name || user?.user_metadata?.name || user?.user_metadata?.full_name || 'User'}</span>
                             <div className="flex items-center gap-3 mt-1">
                                 <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_8px_#10b981] ${isUserOpen ? 'bg-white' : 'bg-emerald-500'}`} />
                                 <span className={`text-[9px] font-mono font-bold tracking-[0.3em] uppercase transition-colors ${isUserOpen ? 'text-white/60' : 'text-emerald-500'}`}>Authenticated</span>
@@ -193,8 +219,8 @@ export default function TopNavbar() {
                                 <span className="font-mono text-[9px] font-black text-white/40 group-hover/link:text-white uppercase tracking-widest">Settings</span>
                              </Link>
                              <button 
-                                onClick={handleLogout}
-                                className="w-full flex items-center gap-4 px-6 py-5 hover:bg-red-600/10 transition-colors group/logout"
+                                onClick={(e) => handleLogout(e)}
+                                className="w-full flex items-center gap-4 px-6 py-5 hover:bg-red-600/10 transition-colors group/logout border-none cursor-pointer"
                              >
                                  <LogOut size={14} className="text-red-500" />
                                 <span className="font-mono text-[9px] font-black text-red-500 uppercase tracking-widest">Logout</span>

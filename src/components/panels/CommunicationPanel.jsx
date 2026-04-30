@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useDashboard } from '../../context/DashboardContext';
+import { useDashboard } from '../../context';
 import { MessageSquare, AlertTriangle, Radio, Send, Terminal, Shield, Lock } from 'lucide-react';
 
 export default function CommunicationPanel() {

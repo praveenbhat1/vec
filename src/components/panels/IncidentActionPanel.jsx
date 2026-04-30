@@ -1,4 +1,4 @@
-import { useDashboard } from '../../context/DashboardContext';
+import { useDashboard } from '../../context';
 import { CheckCircle, ChevronsUp, ShieldAlert, Zap, Clock, Terminal, Activity } from 'lucide-react';
 
 export default function IncidentActionPanel() {

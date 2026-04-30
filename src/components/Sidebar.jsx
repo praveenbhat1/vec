@@ -1,9 +1,10 @@
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { useDashboard } from '../context/DashboardContext';
+import { useDashboard } from '../context';
+import { filterNavByRole, getRoleColor, getRoleLabel } from '../lib/rbac';
 import {
     LayoutDashboard, AlertTriangle, Activity,
     Database, Settings, Shield,
-    Terminal, Lock, Radio, ChevronRight, Zap, LogOut
+    Terminal, Lock, Radio, ChevronRight, Zap, LogOut, FileText
 } from 'lucide-react';
 
 const W_CLOSED = 80;
@@ -21,14 +22,20 @@ const NAV = [
 export default function Sidebar() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { isSidebarOpen, toggleSidebar, addToast } = useDashboard();
+    const { isSidebarOpen, toggleSidebar, addToast, profile, user, logout, userRole } = useDashboard();
     const w = isSidebarOpen ? W_OPEN : W_CLOSED;
+    const filteredNav = filterNavByRole(NAV, userRole);
+    const roleColor = getRoleColor(userRole);
+    const roleLabel = getRoleLabel(userRole);
 
-    const handleLogout = () => {
-        addToast('Logging out...', 'info');
-        setTimeout(() => {
+    const handleLogout = async () => {
+        addToast('Terminating session...', 'info');
+        try {
+            await logout();
             navigate('/');
-        }, 800);
+        } catch {
+            navigate('/');
+        }
     };
 
     return (
@@ -69,7 +76,7 @@ export default function Sidebar() {
 
             {/* ── NAVIGATION BLADE ── */}
             <nav className="flex-1 py-16 px-5 space-y-6">
-                {NAV.map(({ id, icon: Icon, label, path }) => {
+                {filteredNav.map(({ id, icon: Icon, label, path }) => {
                     const isActive = location.pathname === path;
                     return (
                         <button
@@ -150,10 +157,12 @@ export default function Sidebar() {
                       {isSidebarOpen ? (
                          <div className="flex items-center justify-between flex-1">
                             <div className="flex flex-col gap-1 leading-none">
-                                <span className="text-[13px] font-outfit font-black text-white uppercase tracking-wider">Alex Johnson</span>
+                                <span className="text-[13px] font-outfit font-black text-white uppercase tracking-wider">{profile?.name || user?.user_metadata?.name || user?.user_metadata?.full_name || 'User'}</span>
                                 <div className="flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                                    <span className="text-[9px] font-mono text-white/20 uppercase tracking-[0.2em]">Role: Admin</span>
+                                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: roleColor }} />
+                                    <span className="text-[9px] font-mono uppercase tracking-[0.2em]" style={{ color: roleColor }}>
+                                        Role: {roleLabel}
+                                    </span>
                                 </div>
                             </div>
                             <button 

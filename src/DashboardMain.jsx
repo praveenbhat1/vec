@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import TopNavbar from './components/TopNavbar';
 import WorkflowPanel from './components/panels/WorkflowPanel';
@@ -6,16 +7,13 @@ import LiveAlertsPanel from './components/panels/LiveAlertsPanel';
 import MapPanel from './components/panels/MapPanel';
 import CommunicationPanel from './components/panels/CommunicationPanel';
 import ResourceTrackingPanel from './components/panels/ResourceTrackingPanel';
-import AnalyticsPanel from './components/panels/AnalyticsPanel';
+import OrganizationPanel from './components/panels/OrganizationPanel';
 import IncidentActionPanel from './components/panels/IncidentActionPanel';
-import { useDashboard } from './context/DashboardContext';
+import { useDashboard } from './context';
 import { Shield, Zap, Globe, Cpu, Radio, Terminal, Target, Square, Lock, Activity, Radar, Database, BarChart3, ListFilter, AlertTriangle, Clock } from 'lucide-react';
+import { SZ } from './constants';
 
-export const SZ = {
-  sidebarClosed: 80,
-  sidebarOpen:   280,
-  navbarH:       72,
-};
+
 
 function SystemGridOverlay({ mousePos }) {
   return (
@@ -91,6 +89,7 @@ export default function DashboardMain() {
   const { toasts, isSidebarOpen, closeSidebar, stats } = useDashboard();
   const ml = isSidebarOpen ? SZ.sidebarOpen : SZ.sidebarClosed;
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleMouseMove = (e) => setMousePos({ x: e.clientX, y: e.clientY });
@@ -136,7 +135,7 @@ export default function DashboardMain() {
                  <button className="px-6 py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 transition-all font-mono text-[9px] font-black tracking-widest uppercase">
                     Export
                  </button>
-                 <button className="px-6 py-2.5 bg-[#00FFCC] text-black hover:brightness-110 transition-all font-mono text-[9px] font-black tracking-widest uppercase shadow-[0_0_20px_rgba(0,255,204,0.2)]">
+                 <button onClick={() => navigate('/report')} className="px-6 py-2.5 bg-[#00FFCC] text-black hover:brightness-110 transition-all font-mono text-[9px] font-black tracking-widest uppercase shadow-[0_0_20px_rgba(0,255,204,0.2)]">
                     Report Incident
                  </button>
              </div>
@@ -144,10 +143,10 @@ export default function DashboardMain() {
 
           {/* Quick Stats Grid */}
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 animate-fade-in">
-             <StatCard label="Total Reports" value={stats.total} trend={12} icon={AlertTriangle} color="#ef4444" />
-             <StatCard label="Active Alerts" value={stats.active} trend={-4} icon={Database} color="#3b82f6" />
-             <StatCard label="Avg Response" value={`${stats.avgResponseTime.toFixed(1)}m`} trend={3} icon={Activity} color="#10b981" />
-             <StatCard label="Resolved" value={stats.resolved} trend={2} icon={Radio} color="#a855f7" />
+             <StatCard label="Total Reports" value={stats.total ?? 0} trend={0} icon={AlertTriangle} color="#ef4444" />
+             <StatCard label="Active Alerts" value={stats.active ?? 0} trend={0} icon={Database} color="#3b82f6" />
+             <StatCard label="Avg Response" value={`${stats.responseTime || '12'}m`} trend={0} icon={Activity} color="#10b981" />
+             <StatCard label="Resolved" value={stats.contained ?? 0} trend={0} icon={Radio} color="#a855f7" />
           </div>
 
           {/* ── Main Workspace Grid ── */}
@@ -184,8 +183,8 @@ export default function DashboardMain() {
                
                <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-14">
                    <div className="h-[450px] md:h-[400px] animate-slide-up" style={{ animationDelay: '0.5s' }}>
-                      <PanelContainer label="DATA TRENDS" accent="#f59e0b">
-                         <AnalyticsPanel />
+                      <PanelContainer label="AGENCY STATUS" accent="#3b82f6">
+                         <OrganizationPanel />
                       </PanelContainer>
                    </div>
                    <div className="h-[450px] md:h-[400px] animate-slide-up" style={{ animationDelay: '0.6s' }}>

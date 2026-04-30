@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useDashboard } from '../context/DashboardContext';
+import { useDashboard } from '../context';
 import { 
   Shield, 
   Mail, 
@@ -16,15 +16,15 @@ import {
   Terminal
 } from 'lucide-react';
 
-const LIVE_STATS = [
-  { label: 'ACTIVE INCIDENTS', value: '24', color: '#ef4444' },
-  { label: 'RESPONDERS ONLINE', value: '312', color: '#00F0FF' },
-  { label: 'LIVES PROTECTED', value: '10K+', color: '#10b981' },
+const LIVE_STATS_LABELS = [
+  { label: 'TOTAL INCIDENTS', key: 'total', color: '#ef4444' },
+  { label: 'ACTIVE ALERTS', key: 'active', color: '#00F0FF' },
+  { label: 'UNITS DEPLOYED', key: 'contained', color: '#10b981' },
 ];
 
 export default function LoginPage() {
   const nav = useNavigate();
-  const { login } = useDashboard();
+  const { login, loginAsGuest, user, stats } = useDashboard();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -32,6 +32,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  // Navigate to dashboard once user is authenticated
+  useEffect(() => {
+    if (user) {
+      nav('/dashboard', { replace: true });
+    }
+  }, [user, nav]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -50,13 +57,19 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login({ email, password });
-      setLoading(false); 
-      nav('/dashboard');
+      // Navigation is handled by the useEffect above once user state is set
     } catch (err) {
+      setError(err.message || 'Authentication Failed. Integrity Check Error.');
+    } finally {
       setLoading(false);
-      setError(err.response?.data?.error || 'Authentication Failed. Integrity Check Error.');
     }
   };
+
+  const displayStats = LIVE_STATS_LABELS.map(s => ({
+    label: s.label,
+    value: stats[s.key]?.toLocaleString() || '0',
+    color: s.color
+  }));
 
   return (
     <div className="min-h-screen bg-[#08080A] text-[#E5E5E7] font-inter overflow-y-auto flex selection:bg-[#00FFCC] selection:text-black">
@@ -106,7 +119,7 @@ export default function LoginPage() {
 
         {/* Live Stats */}
         <div className="grid grid-cols-1 gap-4 mb-12">
-          {LIVE_STATS.map(({label, value, color}) => (
+          {displayStats.map(({label, value, color}) => (
             <div key={label} className="p-6 bg-white/5 border border-white/5 backdrop-blur-xl flex flex-col items-start gap-1 group hover:border-[#00FFCC]/20 transition-all">
               <span className="text-[10px] font-mono text-white/20 tracking-widest uppercase">{label}</span>
               <span className="text-4xl font-outfit font-black tracking-tighter text-white group-hover:text-[#00FFCC] transition-colors">{value}</span>
@@ -191,19 +204,38 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="w-full group relative overflow-hidden px-10 py-6 bg-white/5 border border-[#00FFCC]/20 hover:bg-[#00FFCC] transition-all duration-700 disabled:opacity-50"
-            >
-              <div className="relative z-10 flex items-center justify-center gap-4">
-                <span className={`text-xl font-outfit font-black uppercase tracking-widest transition-colors duration-700 ${loading ? 'text-white/40' : 'group-hover:text-black text-[#00FFCC]'}`}>
-                  {loading ? 'AUTHENTICATING...' : 'ENTER LOGIN'}
-                </span>
-                {!loading && <ArrowRight className="w-6 h-6 text-[#00FFCC] group-hover:text-black transition-colors" />}
-              </div>
-              <div className="absolute inset-0 bg-white translate-x-[-101%] group-hover:translate-x-0 transition-transform duration-700 ease-in-out hidden" />
-            </button>
+            <div className="flex flex-col gap-4">
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full group relative overflow-hidden px-10 py-6 bg-[#00FFCC] border border-[#00FFCC]/20 hover:brightness-110 transition-all duration-300 disabled:opacity-50"
+              >
+                <div className="relative z-10 flex items-center justify-center gap-4">
+                  <span className={`text-xl font-outfit font-black uppercase tracking-widest text-black`}>
+                    {loading ? 'AUTHENTICATING...' : 'ENTER COMMAND'}
+                  </span>
+                  {!loading && <ArrowRight className="w-6 h-6 text-black" />}
+                </div>
+              </button>
+              
+              <button 
+                type="button"
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    await loginAsGuest();
+                  } catch (e) {
+                    setError('Access failed. Please try manual login.');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                className="w-full py-5 bg-white/5 border border-white/10 text-[#00FFCC] font-mono text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+              >
+                SIGN UP
+              </button>
+            </div>
           </form>
 
           <div className="mt-12 pt-12 border-t border-white/5">

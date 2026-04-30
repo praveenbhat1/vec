@@ -1,4 +1,4 @@
-import { useDashboard } from '../../context/DashboardContext';
+import { useDashboard } from '../../context';
 import { Truck, Activity, Package, Battery, Zap, ChevronRight, HardDrive } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -31,7 +31,9 @@ export default function ResourceTrackingPanel() {
             <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-white/[0.03]">
                 {resources.map((res) => {
                     const Icon = getIcon(res.iconName);
-                    const pct = Math.min(Math.round((res.deployed / res.total) * 100), 100);
+                    // Deployed = Total - Available
+                    const deployed = res.total - res.available;
+                    const pct = Math.min(Math.round((deployed / res.total) * 100), 100);
                     const barColor = pct >= 80 ? '#ef4444' : pct >= 60 ? '#fbbf24' : '#00FFCC';
                     const textColor = pct >= 80 ? 'text-red-500' : pct >= 60 ? 'text-yellow-500' : 'text-[#00FFCC]';
 
@@ -49,7 +51,7 @@ export default function ResourceTrackingPanel() {
                                         {res.name}
                                     </h5>
                                     <div className="font-mono text-[10px] font-black tracking-widest text-white/10 uppercase">
-                                        <b className="text-white/60">{res.deployed}</b> / {res.total}
+                                        <b className="text-white/60">{deployed}</b> / {res.total}
                                     </div>
                                 </div>
                                 
@@ -60,7 +62,7 @@ export default function ResourceTrackingPanel() {
                                 </div>
 
                                 <div className="flex items-center justify-between">
-                                    <span className="font-mono text-[8px] font-black tracking-widest uppercase text-white/20">CAPACITY</span>
+                                    <span className="font-mono text-[8px] font-black tracking-widest uppercase text-white/20">DEPLOYMENT</span>
                                     <span className={`font-mono text-[9px] font-black tracking-widest uppercase italic ${textColor}`}>
                                         {pct >= 80 ? 'SUPPLY CRITICAL' : pct >= 60 ? 'MODERATE' : 'OPTIMAL'}
                                     </span>

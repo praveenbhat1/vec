@@ -1,4 +1,4 @@
-import { useDashboard } from '../../context/DashboardContext';
+import { useDashboard } from '../../context';
 import { AlertTriangle, ClipboardCheck, Siren, HeartHandshake, ChevronRight } from 'lucide-react';
 
 const STEPS = [

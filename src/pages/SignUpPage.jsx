@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useDashboard } from '../context/DashboardContext';
+import { useDashboard } from '../context';
+import { resolveSignupRole } from '../lib/rbac';
 import { 
   Shield, 
   User, 
@@ -20,7 +21,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-const ROLES = ['Civilian / Victim', 'First Responder', 'NGO / Aid Worker', 'Government Official', 'Media / Press'];
+const ROLES = ['Civilian / Victim', 'Hospital / Medical', 'Government Official'];
 const FEATURES = [
   { icon: Globe, label: 'GLOBAL COVERAGE', desc: 'Secure real-time observation across all geographical and atmospheric sectors.' },
   { icon: Zap, label: 'INSTANT RESPONSE', desc: 'AI-driven assessment protocols ensure immediate resource deployment for critical incidents.' },
@@ -42,7 +43,7 @@ const STR_LABEL = ['', 'WEAK SECURITY', 'MODERATE PROTECTION', 'STRONG SECURITY'
 
 export default function SignUpPage() {
   const nav = useNavigate();
-  const { signup } = useDashboard();
+  const { signup, user } = useDashboard();
   const [form, setForm] = useState({ name: '', email: '', phone: '', org: '', role: '', password: '', confirm: '' });
   const [showPw, setShowPw] = useState(false);
   const [showCf, setShowCf] = useState(false);
@@ -50,6 +51,11 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  // Navigate to dashboard once user is authenticated
+  useEffect(() => {
+    if (user) nav('/dashboard', { replace: true });
+  }, [user, nav]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -81,10 +87,8 @@ export default function SignUpPage() {
     setLoading(true);
     
     try {
-      // Map UI roles to backend system roles
-      let systemRole = 'citizen';
-      if (form.role === 'First Responder') systemRole = 'responder';
-      if (form.role === 'Government Official') systemRole = 'admin';
+      // Map UI roles to backend system roles using RBAC
+      const systemRole = resolveSignupRole(form.role);
 
       await signup({
         name: form.name,
@@ -92,12 +96,17 @@ export default function SignUpPage() {
         password: form.password,
         role: systemRole
       });
-      
-      setLoading(false); 
-      nav('/dashboard');
+      // Navigation handled by useEffect above once user state is set
     } catch (err) {
+      const msg = err.message || 'Account Creation Failed.';
+      // If signup succeeded but email confirmation is needed
+      if (msg.toLowerCase().includes('confirm') || msg.toLowerCase().includes('check your email')) {
+        setErrors({ global: 'Account created! Please check your email to confirm, then log in.' });
+      } else {
+        setErrors({ global: msg });
+      }
+    } finally {
       setLoading(false);
-      setErrors({ global: err.response?.data?.error || 'Account Creation Failed.' });
     }
   };
 

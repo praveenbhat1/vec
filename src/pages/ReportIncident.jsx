@@ -1,5 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
+import 'leaflet-defaulticon-compatibility';
 import { 
   Shield, 
   AlertTriangle, 
@@ -18,9 +23,11 @@ import {
   Flame,
   Droplets,
   Wind,
-  Info
+  Info,
+  Globe,
+  Crosshair
 } from 'lucide-react';
-import { useDashboard } from '../context/DashboardContext';
+import { useDashboard } from '../context';
 
 const DISASTER_TYPES = [
   { value: 'flood', label: 'Flood / Flash Flood', icon: Droplets, iconName: 'Droplets' },
@@ -39,18 +46,51 @@ const SEVERITIES = [
   { id: 'critical', label: 'LIFE THREATENING', color: '#ef4444' },
 ];
 
+// --- MAP HELPER COMPONENTS ---
+function MapClickHandler({ onLocationSelect }) {
+    useMapEvents({
+        click(e) {
+            onLocationSelect(e.latlng);
+        },
+    });
+    return null;
+}
+
+function MapController({ center }) {
+    const map = useMap();
+    useEffect(() => {
+        if (center) map.setView([center.lat, center.lng], 15);
+    }, [center, map]);
+    return null;
+}
+
+const customIcon = new L.Icon({
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
 export default function ReportIncident() {
   const nav = useNavigate();
-  const fileRef = useRef();
   const [form, setForm] = useState({ name: '', phone: '', location: '', disasterType: '', severity: '', description: '' });
   const [files, setFiles] = useState([]);
   const [drag, setDrag] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [reportId, setReportId] = useState('');
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [previewLoc, setPreviewLoc] = useState({ lat: 13.3409, lng: 74.7421 }); // Default to Udupi
   const { addAlert, addToast } = useDashboard();
+
+  useEffect(() => {
+    setReportId(Math.floor(Math.random() * 1000000).toString().padStart(6, '0'));
+  }, []);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -58,6 +98,32 @@ export default function ReportIncident() {
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
+
+  // Nomination Geocoding (Free OSM)
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      const locStr = form.location.trim();
+      if (!locStr) return;
+
+      // Check if it's already coordinates
+      const coordMatch = locStr.match(/^([-\d.]+),\s*([-\d.]+)$/);
+      if (coordMatch) {
+         setPreviewLoc({ lat: parseFloat(coordMatch[1]), lng: parseFloat(coordMatch[2]) });
+         return;
+      }
+      
+      try {
+         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locStr)}&limit=1`);
+         const data = await res.json();
+         if (data && data.length > 0) {
+            setPreviewLoc({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
+         }
+      } catch (e) {
+         console.error("Geocoding failed", e);
+      }
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [form.location]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -67,22 +133,35 @@ export default function ReportIncident() {
   };
 
   const fetchGPSLocation = () => {
-    if (!navigator.geolocation) { set('location', 'Geolocation not supported'); return; }
+    if (!navigator.geolocation) { addToast('GPS Not Supported', 'error'); return; }
     setLocLoading(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
-        set('location', `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+        const locStr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        set('location', locStr);
+        setPreviewLoc({ lat, lng });
         setLocLoading(false);
+        addToast('GPS Coordinates Locked', 'success');
       },
-      () => { set('location', 'Unable to retrieve location'); setLocLoading(false); }
+      () => { 
+          addToast('GPS Signal Failed', 'error');
+          setLocLoading(false); 
+      }
     );
+  };
+
+  const handleMapClick = (latlng) => {
+      const locStr = `${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
+      set('location', locStr);
+      setPreviewLoc(latlng);
+      addToast('Location Updated via Map', 'info');
   };
 
   const validate = () => {
     const e = {};
     if (!form.name.trim()) e.name = 'Reporter name is required';
-    if (!/^\+?[\d\s\-]{8,}$/.test(form.phone)) e.phone = 'Valid phone number required';
+    if (!/^\+?[\d\s-]{8,}$/.test(form.phone)) e.phone = 'Valid phone number required';
     if (!form.location.trim()) e.location = 'Location / address is required';
     if (!form.disasterType) e.disasterType = 'Please select a disaster type';
     if (!form.severity) e.severity = 'Please select severity level';
@@ -94,25 +173,31 @@ export default function ReportIncident() {
     e.preventDefault();
     const errs = validate();
     setErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) {
+        addToast('Please correct errors before dispatching.', 'error');
+        return;
+    }
+
     setLoading(true);
-    
     try {
-      const isCritical = form.severity === 'critical' || form.severity === 'high';
-      
       const payload = {
         type: form.disasterType,
         location: form.location,
-        severity: isCritical ? 'high' : (form.severity === 'medium' ? 'medium' : 'low'),
-        description: form.description
+        severity: form.severity,
+        description: form.description,
+        reporter_name: form.name,
+        reporter_phone: form.phone,
+        latitude: previewLoc?.lat || null,
+        longitude: previewLoc?.lng || null,
       };
       
       await addAlert(payload);
-      setLoading(false); 
-      setSuccess(true); 
-    } catch (e) {
+      setSuccess(true);
+      addToast('EMERGENCY_DATA_DISPATCHED', 'success');
+    } catch (err) {
+      addToast('DISPATCH_LINK_FAILURE', 'error');
+    } finally {
       setLoading(false);
-      addToast('System Error. Report not delivered.', 'error');
     }
   };
 
@@ -126,15 +211,15 @@ export default function ReportIncident() {
        <span className="text-[10px] font-mono text-green-500 tracking-[0.5em] uppercase block mb-6">HELP IS ON THE WAY</span>
         <h2 className="font-outfit text-5xl font-black tracking-tighter uppercase mb-8">REPORT RECEIVED</h2>
         <p className="text-white/40 font-light text-lg mb-12">
-          Your emergency report has been sent to the nearest rescue teams. They are being notified right now.
-          Report ID: <span className="text-[#00FFCC] font-mono">#RI-{Date.now().toString().slice(-6)}</span>
+          Your emergency report has been sent to the nearest rescue teams.
+          Report ID: <span className="text-[#00FFCC] font-mono">#RI-{reportId}</span>
         </p>
         <div className="flex flex-col sm:flex-row gap-6 justify-center">
           <button onClick={() => nav('/dashboard')} className="px-10 py-5 bg-[#00FFCC] text-black font-outfit font-black uppercase tracking-widest hover:brightness-110 transition-all">
             View Updates
           </button>
           <button onClick={() => { setSuccess(false); setForm({ name: '', phone: '', location: '', disasterType: '', severity: '', description: '' }); setFiles([]); }} className="px-10 py-5 bg-white/5 border border-white/10 text-white font-outfit font-black uppercase tracking-widest hover:bg-white/10 transition-all">
-            Report Another Emergency
+            New Report
           </button>
         </div>
       </div>
@@ -155,7 +240,7 @@ export default function ReportIncident() {
       </div>
 
       {/* ── TACTICAL NAV ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-black/40 backdrop-blur-3xl border-b border-white/5 py-6 px-8">
+      <nav className="fixed top-0 left-0 right-0 z-[1000] bg-black/40 backdrop-blur-3xl border-b border-white/5 py-6 px-8">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between">
            <Link to="/" className="flex items-center gap-4 group">
             <div className="w-10 h-10 bg-white/5 border border-red-500/20 flex items-center justify-center group-hover:border-red-500/40 transition-all">
@@ -188,7 +273,7 @@ export default function ReportIncident() {
                <span className="text-white/10 stroke-text outline-white/20">EMERGENCY</span>
              </h1>
              <p className="text-white/40 text-lg md:text-xl font-light max-w-2xl mx-auto uppercase tracking-wide">
-               Your report will be sent directly to local emergency responders.
+               Real-time dispatch to emergency responder nodes.
              </p>
           </div>
 
@@ -202,18 +287,18 @@ export default function ReportIncident() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest ml-1">Your Name*</label>
+                  <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest ml-1">Your Name (REQUIRED)*</label>
                   <div className="relative group">
                     <User className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-red-500 transition-colors" />
-                    <input className="w-full bg-white/5 border border-white/5 focus:border-red-500/40 px-16 py-6 font-mono text-sm tracking-widest focus:outline-none transition-all placeholder:text-white/10" placeholder="ENTER YOUR NAME" value={form.name} onChange={e => set('name', e.target.value)} />
+                    <input required className="w-full bg-white/5 border border-white/5 focus:border-red-500/40 px-16 py-6 font-mono text-sm tracking-widest focus:outline-none transition-all placeholder:text-white/10" placeholder="ENTER YOUR NAME" value={form.name} onChange={e => set('name', e.target.value)} />
                   </div>
                   {errors.name && <p className="text-[9px] font-mono text-red-500 uppercase tracking-widest ml-1">{errors.name}</p>}
                 </div>
                 <div className="space-y-3">
-                  <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest ml-1">Phone Number*</label>
+                  <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest ml-1">Phone Number (REQUIRED)*</label>
                   <div className="relative group">
                     <Phone className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-red-500 transition-colors" />
-                    <input className="w-full bg-white/5 border border-white/5 focus:border-red-500/40 px-16 py-6 font-mono text-sm tracking-widest focus:outline-none transition-all placeholder:text-white/10" placeholder="PHONE NUMBER" value={form.phone} onChange={e => set('phone', e.target.value)} />
+                    <input required className="w-full bg-white/5 border border-white/5 focus:border-red-500/40 px-16 py-6 font-mono text-sm tracking-widest focus:outline-none transition-all placeholder:text-white/10" placeholder="PHONE NUMBER" value={form.phone} onChange={e => set('phone', e.target.value)} />
                   </div>
                   {errors.phone && <p className="text-[9px] font-mono text-red-500 uppercase tracking-widest ml-1">{errors.phone}</p>}
                 </div>
@@ -230,12 +315,36 @@ export default function ReportIncident() {
                 <div className="flex gap-4">
                   <div className="relative flex-1 group">
                     <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-red-500 transition-colors" />
-                    <input className="w-full bg-white/5 border border-white/5 focus:border-red-500/40 px-16 py-6 font-mono text-sm tracking-widest focus:outline-none transition-all placeholder:text-white/10" placeholder="ENTER ADDRESS OR COORDINATES" value={form.location} onChange={e => set('location', e.target.value)} />
+                    <input required className="w-full bg-white/5 border border-white/5 focus:border-red-500/40 px-16 py-6 font-mono text-sm tracking-widest focus:outline-none transition-all placeholder:text-white/10" placeholder="ENTER ADDRESS OR COORDINATES" value={form.location} onChange={e => set('location', e.target.value)} />
                   </div>
                   <button type="button" onClick={fetchGPSLocation} disabled={locLoading} className="px-12 bg-white/5 border border-red-500/20 hover:bg-red-500/10 transition-all font-outfit font-black text-xs uppercase tracking-widest text-red-500">
                     {locLoading ? 'SEARCHING...' : 'USE GPS'}
                   </button>
                 </div>
+                
+                {/* Tactical Leaflet Map Picker */}
+                <div className="w-full h-72 border border-white/10 mt-4 overflow-hidden relative group">
+                    <MapContainer 
+                        center={[previewLoc.lat, previewLoc.lng]} 
+                        zoom={13} 
+                        className="w-full h-full z-10"
+                        zoomControl={false}
+                    >
+                        <TileLayer
+                            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                        />
+                        <Marker position={[previewLoc.lat, previewLoc.lng]} icon={customIcon} />
+                        <MapClickHandler onLocationSelect={handleMapClick} />
+                        <MapController center={previewLoc} />
+                    </MapContainer>
+                    <div className="absolute top-4 right-4 z-[1000] bg-black/80 px-4 py-2 border border-white/10 text-[8px] font-mono text-white/40 uppercase tracking-widest pointer-events-none">
+                        Click Map to Set Target_Coord
+                    </div>
+                    <div className="absolute bottom-4 left-4 z-[1000] bg-black/80 px-4 py-2 border border-white/10 text-[8px] font-mono text-[#00FFCC] uppercase tracking-[0.2em] pointer-events-none">
+                        {previewLoc.lat.toFixed(5)}, {previewLoc.lng.toFixed(5)}
+                    </div>
+                </div>
+
                 {errors.location && <p className="text-[9px] font-mono text-red-500 uppercase tracking-widest ml-1">{errors.location}</p>}
               </div>
             </div>
@@ -248,9 +357,9 @@ export default function ReportIncident() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest ml-1">What is happening?*</label>
+                  <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest ml-1">What is happening? (REQUIRED)*</label>
                   <div className="relative group">
-                    <select className="w-full bg-white/5 border border-white/5 focus:border-red-500/40 px-8 py-6 font-mono text-sm tracking-widest focus:outline-none transition-all text-white appearance-none cursor-pointer" value={form.disasterType} onChange={e => set('disasterType', e.target.value)}>
+                    <select required className="w-full bg-white/5 border border-white/5 focus:border-red-500/40 px-8 py-6 font-mono text-sm tracking-widest focus:outline-none transition-all text-white appearance-none cursor-pointer" value={form.disasterType} onChange={e => set('disasterType', e.target.value)}>
                        <option value="" className="bg-[#08080A]">SELECT TYPE</option>
                        {DISASTER_TYPES.map(type => <option key={type.value} value={type.value} className="bg-[#08080A] uppercase">{type.label}</option>)}
                     </select>
@@ -259,7 +368,7 @@ export default function ReportIncident() {
                   {errors.disasterType && <p className="text-[9px] font-mono text-red-500 uppercase tracking-widest ml-1">{errors.disasterType}</p>}
                 </div>
                 <div className="space-y-3">
-                  <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest ml-1">Threat Level*</label>
+                  <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest ml-1">Threat Level (REQUIRED)*</label>
                   <div className="grid grid-cols-4 gap-2">
                     {SEVERITIES.map(sev => (
                       <button key={sev.id} type="button" onClick={() => set('severity', sev.id)} className={`py-6 border font-mono text-[8px] tracking-widest transition-all ${form.severity === sev.id ? 'bg-red-600 border-red-500 text-white' : 'bg-white/5 border-white/5 text-white/20 hover:border-white/20'}`}>
@@ -273,12 +382,12 @@ export default function ReportIncident() {
 
               <div className="space-y-3">
                 <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest ml-1 flex justify-between">
-                  <span>Describe what happened*</span>
+                  <span>Describe the situation (REQUIRED)*</span>
                   <span>{form.description.length}_chars</span>
                 </label>
                 <div className="relative group">
                   <MessageSquare className="absolute left-6 top-8 w-5 h-5 text-white/20 group-focus-within:text-red-500 transition-colors" />
-                  <textarea rows={6} className="w-full bg-white/5 border border-white/5 focus:border-red-500/40 px-16 py-8 font-mono text-sm tracking-widest focus:outline-none transition-all placeholder:text-white/10 resize-none" placeholder="DESCRIBE THE SITUATION IN DETAIL..." value={form.description} onChange={e => set('description', e.target.value)} />
+                  <textarea required rows={6} className="w-full bg-white/5 border border-white/5 focus:border-red-500/40 px-16 py-8 font-mono text-sm tracking-widest focus:outline-none transition-all placeholder:text-white/10 resize-none" placeholder="DESCRIBE THE SITUATION IN DETAIL..." value={form.description} onChange={e => set('description', e.target.value)} />
                 </div>
                 {errors.description && <p className="text-[9px] font-mono text-red-500 uppercase tracking-widest ml-1">{errors.description}</p>}
               </div>
@@ -287,7 +396,7 @@ export default function ReportIncident() {
             {/* Section 4: Visuals */}
             <div className="space-y-8">
               <div className="flex items-center gap-4">
-                <span className="text-[10px] font-mono text-[#00FFCC] uppercase tracking-widest">04_EVIDENCE_UPLOAD</span>
+                <span className="text-[10px] font-mono text-[#00FFCC] uppercase tracking-widest">04_EVIDENCE_UPLOAD (OPTIONAL)</span>
                 <div className="h-[1px] flex-1 bg-white/5" />
               </div>
               <div className={`relative p-12 bg-white/5 border-2 border-dashed transition-all group ${drag ? 'border-red-500 bg-red-500/5' : 'border-white/5 hover:border-white/10'}`}>
@@ -300,24 +409,12 @@ export default function ReportIncident() {
                   <p className="text-[8px] font-mono text-white/20 uppercase">JPG_PNG_MP4 // LIMIT_5_FILES</p>
                 </div>
               </div>
-              {files.length > 0 && (
-                <div className="grid grid-cols-5 gap-4">
-                  {files.map((f, i) => (
-                    <div key={i} className="aspect-square bg-white/5 border border-white/5 relative group">
-                       <img src={URL.createObjectURL(f)} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" alt="preview" />
-                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                          <button onClick={() => setFiles(files.filter((_, idx) => idx !== i))} className="text-red-500 text-[8px] font-mono bg-black/80 px-2 py-1">PURGE</button>
-                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
             <div className="p-8 bg-red-600/5 border border-red-600/20 flex gap-6 items-start">
                <Info className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
                <p className="text-xs font-mono text-red-600 uppercase tracking-widest leading-relaxed">
-                 PLEASE NOTE: Only report real emergencies. Accurate information helps our rescue teams save lives faster.
+                 NOTICE: Verified reporting only. Accurate information enables rapid response deployment.
                </p>
             </div>
 
@@ -329,7 +426,7 @@ export default function ReportIncident() {
               <div className="relative z-10 flex items-center justify-center gap-6">
                 <Zap className={`w-8 h-8 text-white ${loading ? 'animate-pulse' : ''}`} />
                 <span className="text-2xl font-outfit font-black uppercase tracking-widest text-white">
-                  {loading ? 'SENDING REPORT...' : 'SEND REPORT NOW'}
+                  {loading ? 'INITIATING DISPATCH...' : 'DISPATCH EMERGENCY REPORT'}
                 </span>
               </div>
             </button>
@@ -337,7 +434,7 @@ export default function ReportIncident() {
 
           <footer className="mt-20 pt-20 border-t border-white/5 flex flex-col items-center gap-6">
              <div className="flex gap-12 text-[9px] font-mono text-white/20 tracking-[0.4em]">
-                <span>ENCRYPT_STRENGTH: 256-BIT</span>
+                <span>LINK: OSM_ENCRYPTED</span>
                 <span>SECURE_UPLINK</span>
                 <span>AUTH: COMMAND_SYSTEM</span>
              </div>
@@ -353,6 +450,9 @@ export default function ReportIncident() {
           -webkit-text-stroke: 1px rgba(255,255,255,0.4);
           text-stroke: 1px rgba(255,255,255,0.4);
           color: transparent;
+        }
+        .leaflet-container {
+            background: #08080A !important;
         }
       `}} />
     </div>

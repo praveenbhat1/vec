@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, Component } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDashboard } from '../context/DashboardContext';
+import { useDashboard } from '../context';
 import Sidebar from '../components/Sidebar';
 import TopNavbar from '../components/TopNavbar';
-import { SZ } from '../DashboardMain';
+import { SZ } from '../constants';
 import { 
     Settings as SettingsIcon, Users, Building2, Bell, Shield, 
     Server, Cpu, Activity, CheckCircle2, XCircle, 
@@ -45,19 +45,7 @@ class LocalErrorBoundary extends Component {
 
 // ── MOCK DATA ──
 
-const MOCK_ORGS = [
-    { id: 1, name: 'City General Hospital', type: 'Hospital', location: 'Downtown', status: 'Active', contact: '+1-555-0123', capacity: '200 Beds' },
-    { id: 2, name: 'Western Fire Dept', type: 'Fire Dept', location: 'Industrial Sector', status: 'Active', contact: '+1-555-0199', capacity: '12 Units' },
-    { id: 3, name: 'Red Cross Alpha', type: 'NGO', location: 'Suburban East', status: 'Inactive', contact: '+1-555-0144', capacity: '50 Responders' },
-    { id: 4, name: 'Emergency Medics Unit', type: 'Hospital', location: 'North Point', status: 'Active', contact: '+1-555-0188', capacity: '40 Beds' },
-];
-
-const MOCK_USERS = [
-    { id: 1, name: 'Commander Alex', role: 'Admin', org: 'Crisis HQ', status: 'Active', lastLogin: '2 mins ago', sessions: 1 },
-    { id: 2, name: 'Major Sarah', role: 'Responder', org: 'Fire Dept', status: 'Active', lastLogin: '1 hour ago', sessions: 2 },
-    { id: 3, name: 'Officer James', role: 'User', org: 'General Hospital', status: 'Active', lastLogin: '3 hours ago', sessions: 1 },
-    { id: 4, name: 'Tech Elena', role: 'Admin', org: 'IT Hub', status: 'Inactive', lastLogin: '2 days ago', sessions: 0 },
-];
+// Data is now fetched from useDashboard() context
 
 // ── CUSTOM COMPONENTS ──
 
@@ -143,7 +131,20 @@ const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
 // ── MAIN CONTENT ──
 
 function SettingsContent() {
-    const { isSidebarOpen, addToast } = useDashboard();
+    const { 
+        organizations, 
+        profiles, 
+        stats, 
+        deleteOrganization, 
+        addOrganization, 
+        updateOrganization,
+        updateProfileRole, 
+        deleteProfile,
+        addToast,
+        refreshData,
+        isSidebarOpen,
+        logout
+    } = useDashboard();
     const navigate = useNavigate();
     
     // States
@@ -155,20 +156,84 @@ function SettingsContent() {
     // Modal controls
     const [modal, setModal] = useState({ open: false, type: '', data: null });
 
+    const handleEditOrg = async (org) => {
+        const newName = prompt("Update Organization Name:", org.name);
+        if (newName === null) return;
+        const newType = prompt("Update Type:", org.type);
+        const newContact = prompt("Update Contact:", org.contact);
+        
+        await updateOrganization(org.id, {
+            name: newName || org.name,
+            type: newType || org.type,
+            contact: newContact || org.contact
+        });
+    };
+
+    const handleEditUser = async (user) => {
+        const newName = prompt("Update User Name:", user.name);
+        if (newName === null) return;
+        const newOrg = prompt("Update Organization:", user.organization);
+        
+        // This is a placeholder for actual profile update logic in your context
+        // Adjust if your context handles this via a function
+        console.log("Updating user:", user.id, newName, newOrg);
+        
+        addToast('Profile updated', 'success');
+        refreshData();
+    };
+
     useEffect(() => {
         const handleMouseMove = (e) => setMousePos({ x: e.clientX, y: e.clientY });
         window.addEventListener('mousemove', handleMouseMove);
         return () => window.removeEventListener('mousemove', handleMouseMove);
     }, []);
 
+    const handleRegisterOrg = async () => {
+        const name = prompt("Enter Organization Name:");
+        if (!name) return;
+        const type = prompt("Enter Type (e.g. Hospital, Fire Dept):", "NGO");
+        const contact = prompt("Enter Contact Info:", "+1-555-0000");
+        
+        try {
+            await addOrganization({
+                name,
+                type,
+                contact,
+                status: 'Active'
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const confirmDeleteOrg = async (id, name) => {
+        if (window.confirm(`Are you sure you want to remove ${name}?`)) {
+            await deleteOrganization(id);
+        }
+    };
+
+    const confirmDeleteUser = async (id, name) => {
+        if (window.confirm(`Are you sure you want to remove user ${name}?`)) {
+            await deleteProfile(id);
+        }
+    };
+
+    const toggleRole = async (id, currentRole) => {
+        const newRole = currentRole === 'admin' ? 'responder' : 'admin';
+        await updateProfileRole(id, newRole);
+    };
+
     const openConfirm = (type, data) => setModal({ open: true, type, data });
     const closeConfirm = () => setModal({ open: false, type: '', data: null });
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
         addToast('Terminating session...', 'info');
-        setTimeout(() => {
+        try {
+            await logout();
             navigate('/');
-        }, 800);
+        } catch {
+            navigate('/');
+        }
     };
 
     return (
@@ -223,7 +288,10 @@ function SettingsContent() {
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-red-500 transition-colors" size={12} />
                                         <input type="text" placeholder="Search entries..." className="w-full bg-white/5 border border-white/5 px-10 py-2.5 font-mono text-[10px] uppercase tracking-widest outline-none focus:border-red-500/30 transition-all text-white" />
                                     </div>
-                                    <button className="px-6 py-2.5 bg-red-600 text-white font-mono text-[9px] font-black uppercase tracking-widest hover:brightness-110 transition-all">
+                                    <button 
+                                        onClick={handleRegisterOrg}
+                                        className="px-6 py-2.5 bg-red-600 text-white font-mono text-[9px] font-black uppercase tracking-widest hover:brightness-110 transition-all"
+                                    >
                                         Add Organization
                                     </button>
                                 </div>
@@ -231,25 +299,31 @@ function SettingsContent() {
                                     <table className="w-full min-w-[900px]">
                                         <TableHeader columns={['NAME', 'TYPE', 'CONTACT', 'CAPACITY', 'STATUS']} />
                                         <tbody className="font-mono text-[10px] uppercase tracking-widest text-white/60">
-                                            {MOCK_ORGS.map((org) => (
+                                            {organizations.map((org) => (
                                                 <tr key={org.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
                                                     <td className="px-6 py-5 font-black text-white">{org.name}</td>
                                                     <td className="px-6 py-5">{org.type}</td>
                                                     <td className="px-6 py-5 text-[9px]">{org.contact}</td>
-                                                    <td className="px-6 py-5 text-blue-400 font-bold">{org.capacity}</td>
+                                                    <td className="px-6 py-5 text-blue-400 font-bold">{org.capacity || 'N/A'}</td>
                                                     <td className="px-6 py-5">
                                                         <div className="flex items-center gap-2">
-                                                            <div className={`w-1.5 h-1.5 rounded-full ${org.status === 'Active' ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                                                            <span className={org.status === 'Active' ? 'text-emerald-500' : 'text-red-500/60'}>
-                                                                {org.status}
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${org.status !== 'Inactive' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                                            <span className={org.status !== 'Inactive' ? 'text-emerald-500' : 'text-red-500/60'}>
+                                                                {org.status || 'Active'}
                                                             </span>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-5 text-right">
                                                         <div className="flex justify-end gap-4">
-                                                            <button className="text-white/20 hover:text-white transition-colors" title="Edit"><Edit2 size={12} /></button>
                                                             <button 
-                                                                onClick={() => openConfirm('delete_org', org.name)} 
+                                                                onClick={() => handleEditOrg(org)}
+                                                                className="text-white/20 hover:text-white transition-colors" 
+                                                                title="Edit"
+                                                            >
+                                                                <Edit2 size={12} />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => confirmDeleteOrg(org.id, org.name)} 
                                                                 className="text-white/20 hover:text-red-500 transition-colors" 
                                                                 title="Delete"
                                                             >
@@ -351,26 +425,39 @@ function SettingsContent() {
                                     <table className="w-full min-w-[700px]">
                                         <TableHeader columns={['NAME', 'ROLE', 'ORGANIZATION', 'LAST LOGIN', 'SESSIONS']} />
                                         <tbody className="font-mono text-[10px] uppercase tracking-widest text-white/60">
-                                            {MOCK_USERS.map((user) => (
-                                                <tr key={user.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors group/row">
+                                            {profiles.map((userProfile) => (
+                                                <tr key={userProfile.id} className="border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors group/row">
                                                     <td className="px-6 py-5">
                                                         <div className="flex items-center gap-3">
-                                                           <div className="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/20 text-[8px] font-black">{user.name ? user.name[0] : 'U'}</div>
-                                                           <span className="font-black text-white">{user.name}</span>
+                                                           <div className="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/20 text-[8px] font-black">{userProfile.name ? userProfile.name[0] : 'U'}</div>
+                                                           <span className="font-black text-white">{userProfile.name}</span>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-5">
-                                                        <span className={`px-2 py-0.5 rounded-sm bg-white/5 border border-white/10 ${user.role === 'Admin' ? 'text-red-400' : 'text-blue-400'}`}>
-                                                            {user.role}
-                                                        </span>
+                                                        <button 
+                                                            onClick={() => toggleRole(userProfile.id, userProfile.role)}
+                                                            className={`px-2 py-0.5 rounded-sm bg-white/5 border border-white/10 ${userProfile.role === 'admin' ? 'text-red-400 border-red-500/20' : 'text-blue-400 border-blue-500/20'} uppercase hover:bg-white/10 transition-all`}
+                                                        >
+                                                            {userProfile.role}
+                                                        </button>
                                                     </td>
-                                                    <td className="px-6 py-5">{user.org}</td>
-                                                    <td className="px-6 py-5 text-white/40 font-bold">{user.lastLogin}</td>
-                                                    <td className="px-6 py-5">{user.sessions} ACTIVE</td>
+                                                    <td className="px-6 py-5">{userProfile.organization || 'Independent'}</td>
+                                                    <td className="px-6 py-5 text-white/40 font-bold">Online</td>
+                                                    <td className="px-6 py-5">1 ACTIVE</td>
                                                     <td className="px-6 py-5 text-right">
                                                         <div className="flex justify-end gap-3 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                                                            <button className="p-1.5 bg-white/5 hover:bg-white/10 transition-all"><Edit2 size={10} /></button>
-                                                            <button className="p-1.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"><Trash2 size={10} /></button>
+                                                            <button 
+                                                                onClick={() => handleEditUser(userProfile)}
+                                                                className="p-1.5 bg-white/5 hover:bg-white/10 transition-all"
+                                                            >
+                                                                <Edit2 size={10} />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => confirmDeleteUser(userProfile.id, userProfile.name)}
+                                                                className="p-1.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                                                            >
+                                                                <Trash2 size={10} />
+                                                            </button>
                                                         </div>
                                                     </td>
                                                 </tr>

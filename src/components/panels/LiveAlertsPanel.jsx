@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { useDashboard } from '../../context/DashboardContext';
+import { useDashboard } from '../../context';
 import { ShieldAlert, Zap, Clock, Terminal, Activity, ChevronRight, Activity as Heartbeat } from 'lucide-react';
 
 export default function LiveAlertsPanel() {
     const navigate = useNavigate();
-    const { alerts, getIcon, addToast, updateStatus, user } = useDashboard();
-    const criticalCount = alerts.filter(a => a.critical).length;
+    const { incidents, getIcon, addToast, updateStatus, user } = useDashboard();
+    const criticalCount = (incidents || []).filter(a => a.critical).length;
 
     return (
         <div className="flex flex-col h-full w-full bg-[#0A0A0B]/20 relative overflow-hidden backdrop-blur-3xl group">
@@ -22,7 +22,7 @@ export default function LiveAlertsPanel() {
                     </div>
                     <div>
                         <h4 className="font-outfit font-black text-xl tracking-tight text-white uppercase leading-none mb-1">LIVE INCIDENTS</h4>
-                        <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-white/30 uppercase">MONITORING: {alerts.length} AREAS</p>
+                        <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-white/30 uppercase">MONITORING: {incidents?.length || 0} AREAS</p>
                     </div>
                 </div>
                 {criticalCount > 0 && (
@@ -34,7 +34,7 @@ export default function LiveAlertsPanel() {
 
             {/* Alert List Feed */}
             <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-white/[0.03]">
-                {alerts.map((alert, idx) => {
+                {(incidents || []).map((alert, idx) => {
                     const Icon = getIcon(alert.iconName);
                     return (
                         <div
@@ -65,26 +65,26 @@ export default function LiveAlertsPanel() {
                                 
                                 <div className="flex items-center gap-4 mt-2">
                                     <div className="px-3 py-1 bg-white/5 border border-white/5 font-mono text-[8px] font-black tracking-widest uppercase text-white/20">
-                                        ID: {Math.random().toString(36).substr(2, 6).toUpperCase()}
+                                        ID: {alert.id.slice(0, 8).toUpperCase()}
                                     </div>
                                     <div className={`px-3 py-1 border font-mono text-[8px] font-black tracking-widest uppercase ${alert.critical ? 'border-red-500/20 text-red-500 bg-red-500/5' : 'border-blue-500/20 text-blue-400 bg-blue-500/5'}`}>
-                                        {alert.status === 'active' ? 'ACTIVE_UNASSIGNED' : alert.status === 'responding' ? 'RESPONDERS_DISPATCHED' : 'RESOLVED'}
+                                        {alert.status.toUpperCase() === 'ACTIVE' ? 'ACTIVE_UNASSIGNED' : alert.status.toUpperCase() === 'RESPONDING' ? 'RESPONDERS_DISPATCHED' : 'RESOLVED'}
                                     </div>
                                     
                                     {/* Responder Actions */}
                                     {(user?.role === 'responder' || user?.role === 'admin') && (
                                        <div className="flex gap-2">
-                                          {alert.status === 'active' && (
+                                          {alert.status.toUpperCase() === 'ACTIVE' && (
                                             <button 
-                                              onClick={async (e) => { e.stopPropagation(); await updateStatus(alert.id, 'responding'); }}
+                                              onClick={async (e) => { e.stopPropagation(); await updateStatus(alert.id, 'RESPONDING'); }}
                                               className="px-3 py-1 bg-blue-600 text-white font-mono text-[8px] font-black uppercase hover:bg-blue-700"
                                             >
                                               Dispatch
                                             </button>
                                           )}
-                                          {alert.status === 'responding' && (
+                                          {alert.status.toUpperCase() === 'RESPONDING' && (
                                             <button 
-                                              onClick={async (e) => { e.stopPropagation(); await updateStatus(alert.id, 'resolved'); }}
+                                              onClick={async (e) => { e.stopPropagation(); await updateStatus(alert.id, 'RESOLVED'); }}
                                               className="px-3 py-1 bg-green-600 text-white font-mono text-[8px] font-black uppercase hover:bg-green-700"
                                             >
                                               Resolve

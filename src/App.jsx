@@ -1,6 +1,8 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { DashboardProvider } from './context/DashboardContext';
+import { DashboardProvider, useDashboard } from './context';
+import ErrorBoundary from './components/ErrorBoundary';
+import { RoleGuard, ProtectedRoute } from './components/RoleGuard';
 
 // Standard Imports for Instant Transitions
 import LandingPage from './pages/LandingPage';
@@ -24,24 +26,35 @@ function SuspenseFallback() {
 
 function App() {
   return (
-    <Router>
-      <DashboardProvider>
-        <Suspense fallback={<SuspenseFallback />}>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/dashboard" element={<DashboardMain />} />
-            <Route path="/resources" element={<ResourceInventory />} />
-            <Route path="/login"    element={<LoginPage />} />
-            <Route path="/register" element={<SignUpPage />} />
-            <Route path="/report"   element={<ReportIncident />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/alerts"    element={<Alerts />} />
-            <Route path="/settings"  element={<Settings />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
-      </DashboardProvider>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <DashboardProvider>
+          <Suspense fallback={<SuspenseFallback />}>
+            <Routes>
+              {/* ── PUBLIC ROUTES ── */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login"    element={<LoginPage />} />
+              <Route path="/register" element={<SignUpPage />} />
+              
+              {/* ── AUTHENTICATED (any role) ── */}
+              <Route path="/report" element={<ProtectedRoute><ReportIncident /></ProtectedRoute>} />
+
+              {/* ── ROLE-PROTECTED ROUTES ── */}
+              {/* official + admin */}
+              <Route path="/dashboard" element={<RoleGuard path="/dashboard"><DashboardMain /></RoleGuard>} />
+              <Route path="/alerts"    element={<RoleGuard path="/alerts"><Alerts /></RoleGuard>} />
+
+              {/* admin only */}
+              <Route path="/resources" element={<RoleGuard path="/resources"><ResourceInventory /></RoleGuard>} />
+              <Route path="/analytics" element={<RoleGuard path="/analytics"><Analytics /></RoleGuard>} />
+              <Route path="/settings"  element={<RoleGuard path="/settings"><Settings /></RoleGuard>} />
+              
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </DashboardProvider>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

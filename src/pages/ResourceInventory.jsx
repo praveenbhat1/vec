@@ -1,37 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useDashboard } from '../context/DashboardContext';
+import { useDashboard } from '../context';
 import Sidebar from '../components/Sidebar';
 import TopNavbar from '../components/TopNavbar';
-import { SZ } from '../DashboardMain';
+import { SZ } from '../constants';
 import {
     Search, Plus, Package, MapPin, Database, Hospital,
     AlertCircle, CheckCircle2, ChevronRight, Pill,
     Truck, Navigation, Clock, Activity, Send, HeartPulse, Wrench, Shield, Globe, Zap
 } from 'lucide-react';
 
-function Toast({ message, type }) {
-    const bg = type === 'error' ? 'rgba(239, 68, 68, 0.1)' : type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0, 240, 255, 0.1)';
-    const border = type === 'error' ? 'rgba(239, 68, 68, 0.2)' : type === 'success' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(0, 240, 255, 0.2)';
-    const textColor = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#00F0FF';
-    
-    return (
-      <div className="font-mono px-6 py-4 backdrop-blur-3xl border text-[10px] font-bold tracking-[0.2em] uppercase"
-           style={{background: bg, borderColor: border, color: textColor}}>
-        <div className="flex items-center gap-3">
-          <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{backgroundColor: textColor}} />
-          {message}
-        </div>
-      </div>
-    );
-}
 
-function ToastContainer({ toasts }) {
-    return (
-        <div className="fixed bottom-8 right-8 z-[200] flex flex-col gap-4 pointer-events-none">
-            {toasts.map(t => <Toast key={t.id} message={t.message} type={t.type} />)}
-        </div>
-    );
-}
 
 // MiniMap visual for Hospital cards
 const MiniMap = ({ isFull, isNear }) => {
@@ -68,11 +46,13 @@ const MiniMap = ({ isFull, isNear }) => {
 };
 
 export default function ResourceInventory() {
-    const { toasts, isSidebarOpen } = useDashboard();
+    const { toasts, isSidebarOpen, resources: contextResources = [], createResourceAction, hasPermission, PERMISSIONS } = useDashboard();
     const ml = isSidebarOpen ? SZ.sidebarOpen : SZ.sidebarClosed;
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-    const [activeTab, setActiveTab] = useState('hospitals');
+    const safeResources = Array.isArray(contextResources) ? contextResources : [];
+
+    const [activeTab, setActiveTab] = useState('supplies');
 
     useEffect(() => {
         const handleMouseMove = (e) => setMousePos({ x: e.clientX, y: e.clientY });
@@ -80,66 +60,92 @@ export default function ResourceInventory() {
         return () => window.removeEventListener('mousemove', handleMouseMove);
     }, []);
 
-    // Supplies State
-    const [resources, setResources] = useState([
-        { id: 1, name: 'Medical Kits', quantity: 500, unit: 'kits', location: 'Main Warehouse' },
-        { id: 2, name: 'Bottled Water', quantity: 2000, unit: 'liters', location: 'Sector A Storage' },
-        { id: 3, name: 'Blankets', quantity: 1500, unit: 'units', location: 'Camp B Supply' },
-        { id: 4, name: 'Emergency Rations', quantity: 3000, unit: 'kg', location: 'Main Warehouse' },
-    ]);
+    // Filter resources by category with safety guards
+    const resources = safeResources.filter(r => r && (r.category === 'supply' || r.category === 'supplies' || !r.category));
+    
+    const hospitals = safeResources
+        .filter(r => r && (r.category === 'personnel' || r.type === 'hospital' || (r.name && r.name.toLowerCase().includes('hospital'))))
+        .map(h => {
+            const total = Number(h.total) || 100;
+            const available = Number(h.available ?? h.total ?? 0);
+            const ratio = total > 0 ? (available / total) : 0;
+            return {
+                ...h,
+                id: h.id || Math.random().toString(),
+                name: h.name || 'Unnamed Facility',
+                bedsTotal: total,
+                bedsAvailable: available,
+                distance: h.location || 'Local Sector',
+                medicines: { critical: 20, general: 50 },
+                status: ratio < 0.1 ? 'Full' : ratio < 0.3 ? 'Near Capacity' : 'Available'
+            };
+        });
+
+    const fleet = safeResources
+        .filter(r => r && (r.category === 'vehicle' || r.type === 'ambulance' || r.type === 'fire_truck' || r.category === 'fleet'))
+        .map(v => ({
+            ...v,
+            id: v.id || Math.random().toString(),
+            name: v.name || 'Unnamed Unit',
+            unit: v.name || 'Unnamed Unit',
+            eta: (v.deployed || 0) > 0 ? 'ACTIVE' : '-',
+            status: v.status || ((v.deployed || 0) > 0 ? 'Deployed' : 'Available')
+        }));
+    
+    // Dispatches (derived from resources with active deployment)
+    const dispatches = safeResources
+        .filter(r => r && (Number(r.deployed) || 0) > 0)
+        .map(r => ({
+            id: r.id || Math.random().toString(),
+            item: r.name || 'Unnamed Resource',
+            qty: r.deployed,
+            to: r.location || 'Active Sector',
+            time: 'SYNC_REALTIME',
+            status: 'In Transit'
+        })).slice(0, 4);
+
     const [searchQuery, setSearchQuery] = useState('');
     const [isSpaceModalOpen, setIsSpaceModalOpen] = useState(false);
     const [newItem, setNewItem] = useState({ name: '', quantity: '', unit: 'kg', location: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Hospital State
-    const [hospitals] = useState([
-        { id: 1, name: 'City Central Hospital', distance: '1.2 km', bedsTotal: 200, bedsAvailable: 0, status: 'Full', medicines: { critical: 40, general: 120 } },
-        { id: 2, name: 'Northside Medical Center', distance: '3.5 km', bedsTotal: 150, bedsAvailable: 45, status: 'Available', medicines: { critical: 80, general: 300 } },
-        { id: 3, name: 'St. Jude Emergency', distance: '4.1 km', bedsTotal: 80, bedsAvailable: 5, status: 'Near Capacity', medicines: { critical: 10, general: 50 } },
-        { id: 4, name: 'Field Care Unit A', distance: '0.8 km', bedsTotal: 40, bedsAvailable: 30, status: 'Available', medicines: { critical: 20, general: 80 } },
-    ]);
     const [hospitalSearch, setHospitalSearch] = useState('');
-
-    // Fleet & Logistics State
-    const [fleet] = useState([
-        { id: 1, unit: 'AMB-01', type: 'Ambulance', status: 'En Route', location: 'Sector B - Evac', eta: '5 mins' },
-        { id: 2, unit: 'TRK-05', type: 'Supply Truck', status: 'Available', location: 'Main Warehouse', eta: '-' },
-        { id: 3, unit: 'HELI-A', type: 'Air Support', status: 'Deployed', location: 'North Mountains', eta: 'Arrived' },
-        { id: 4, unit: 'AMB-02', type: 'Ambulance', status: 'Maintenance', location: 'City Garage', eta: '-' },
-        { id: 5, unit: 'TRK-08', type: 'Command Vehicle', status: 'Available', location: 'HQ Base', eta: '-' },
-    ]);
     const [fleetSearch, setFleetSearch] = useState('');
-
-    // Recent Dispatches
-    const [dispatches] = useState([
-        { id: 101, item: 'Medical Kits', qty: 50, to: 'St. Jude Emergency', time: '10 mins ago', status: 'In Transit' },
-        { id: 102, item: 'Bottled Water', qty: 200, to: 'Sector B Evac', time: '25 mins ago', status: 'Delivered' },
-        { id: 103, item: 'Blankets', qty: 100, to: 'Field Care Unit A', time: '1 hour ago', status: 'Delivered' },
-        { id: 104, item: 'Emergency Rations', qty: 500, to: 'Camp B Supply', time: '2 hours ago', status: 'Delivered' },
-    ]);
 
     const handleAddStock = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        setTimeout(() => {
-            const addedItem = {
-                id: Date.now(),
+        try {
+            await createResourceAction({
                 name: newItem.name,
-                quantity: Number(newItem.quantity),
+                total: parseInt(newItem.quantity) || 0,
                 unit: newItem.unit,
-                location: newItem.location
-            };
-            setResources([...resources, addedItem]);
-            setIsSubmitting(false);
+                location: newItem.location,
+                category: 'supply', 
+                type: 'medical_kit' // Valid type for DB check constraint
+            });
             setIsSpaceModalOpen(false);
             setNewItem({ name: '', quantity: '', unit: 'kg', location: '' });
-        }, 600);
+        } catch (err) {
+            console.error("Failed to add stock:", err);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    const filteredResources = resources.filter(res => res.name.toLowerCase().includes(searchQuery.toLowerCase()) || res.location.toLowerCase().includes(searchQuery.toLowerCase()));
-    const filteredHospitals = hospitals.filter(hosp => hosp.name.toLowerCase().includes(hospitalSearch.toLowerCase()) || hosp.status.toLowerCase().includes(hospitalSearch.toLowerCase()));
-    const filteredFleet = fleet.filter(f => f.unit.toLowerCase().includes(fleetSearch.toLowerCase()) || f.type.toLowerCase().includes(fleetSearch.toLowerCase()) || f.status.toLowerCase().includes(fleetSearch.toLowerCase()));
+    const filteredResources = resources.filter(res => 
+        (res.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+        (res.location || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    const filteredHospitals = hospitals.filter(hosp => 
+        (hosp.name || '').toLowerCase().includes(hospitalSearch.toLowerCase()) || 
+        (hosp.status || '').toLowerCase().includes(hospitalSearch.toLowerCase())
+    );
+    const filteredFleet = fleet.filter(f => 
+        (f.unit || '').toLowerCase().includes(fleetSearch.toLowerCase()) || 
+        (f.type || '').toLowerCase().includes(fleetSearch.toLowerCase()) || 
+        (f.status || '').toLowerCase().includes(fleetSearch.toLowerCase())
+    );
 
     const getFleetIcon = (type) => {
         switch (type) {
@@ -167,9 +173,8 @@ export default function ResourceInventory() {
             <TopNavbar />
 
             <main
-                className="flex-1 overflow-x-hidden overflow-y-auto transition-all duration-500 relative z-10 custom-scrollbar"
+                className={`flex-1 overflow-x-hidden overflow-y-auto transition-all duration-500 relative z-10 custom-scrollbar will-change-transform ${isSidebarOpen ? 'ml-sidebar-open' : 'ml-sidebar-closed'}`}
                 style={{
-                    marginLeft: ml,
                     marginTop: SZ.navbarH,
                     height: `calc(100vh - ${SZ.navbarH}px)`,
                 }}
@@ -188,7 +193,7 @@ export default function ResourceInventory() {
                              <span className="bg-gradient-to-r from-[#00FFCC] via-white to-white/40 bg-clip-text text-transparent italic">HUB</span>
                            </h1>
                            
-                           {activeTab === 'supplies' && (
+                           {activeTab === 'supplies' && hasPermission(PERMISSIONS.ADD_RESOURCE) && (
                                 <button
                                     onClick={() => setIsSpaceModalOpen(true)}
                                     className="px-10 py-5 bg-[#00FFCC] text-black font-outfit font-black uppercase tracking-widest hover:brightness-110 transition-all flex items-center gap-4 shadow-[0_0_40px_rgba(0,255,204,0.15)]"
@@ -263,20 +268,20 @@ export default function ResourceInventory() {
                                                     </td>
                                                     <td className="px-8 py-8 font-mono">
                                                         <div className="flex items-baseline gap-2">
-                                                            <span className="font-outfit font-black text-3xl text-white tracking-tighter">{item.quantity.toLocaleString()}</span>
+                                                            <span className="font-outfit font-black text-3xl text-white tracking-tighter">{(item.available ?? item.total ?? 0).toLocaleString()}</span>
                                                             <span className="text-[10px] text-blue-400 font-bold uppercase tracking-widest opacity-60">
-                                                                {item.unit}
+                                                                {item.unit || 'UNITS'}
                                                             </span>
                                                         </div>
                                                     </td>
                                                     <td className="px-8 py-8">
                                                         <div className="flex items-center gap-3 text-white/40">
                                                             <MapPin className="w-4 h-4 text-[#00FFCC]" />
-                                                            <span className="font-mono text-[11px] uppercase tracking-widest truncate max-w-[180px]">{item.location}</span>
+                                                            <span className="font-mono text-[11px] uppercase tracking-widest truncate max-w-[180px]">{item.location || 'Not Specified'}</span>
                                                         </div>
                                                     </td>
                                                     <td className="px-8 py-8 text-right">
-                                                        {item.quantity > 500 ? (
+                                                        {(item.available ?? item.total ?? 0) > 10 ? (
                                                             <span className="inline-flex items-center gap-3 px-4 py-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 font-mono text-[9px] font-bold tracking-[0.2em] uppercase">
                                                                 <div className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" /> Adequate
                                                             </span>
@@ -603,7 +608,23 @@ export default function ResourceInventory() {
                 </div>
             )}
 
-            <ToastContainer toasts={toasts} />
+            {toasts && Array.isArray(toasts) && toasts.length > 0 && (
+                <div className="fixed bottom-8 right-8 z-[200] flex flex-col gap-4 pointer-events-none">
+                    {toasts.map(t => (
+                        <div key={t.id} className="font-mono px-6 py-4 backdrop-blur-3xl border text-[10px] font-bold tracking-[0.2em] uppercase"
+                             style={{
+                                 background: t.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : t.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0, 240, 255, 0.1)',
+                                 borderColor: t.type === 'error' ? 'rgba(239, 68, 68, 0.2)' : t.type === 'success' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(0, 240, 255, 0.2)',
+                                 color: t.type === 'error' ? '#ef4444' : t.type === 'success' ? '#10b981' : '#00F0FF'
+                             }}>
+                            <div className="flex items-center gap-3">
+                                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{backgroundColor: t.type === 'error' ? '#ef4444' : t.type === 'success' ? '#10b981' : '#00F0FF'}} />
+                                {t.message}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
             
             <style dangerouslySetInnerHTML={{ __html: `
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }

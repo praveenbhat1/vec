@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, Component } from 'react';
-import { useDashboard } from '../context/DashboardContext';
+import { useDashboard } from '../context';
 import Sidebar from '../components/Sidebar';
 import TopNavbar from '../components/TopNavbar';
 import { 
@@ -40,83 +40,7 @@ const LOCAL_SZ = {
   navbarH:       72,
 };
 
-const MOCK_ALERTS = [
-    {
-        id: 'AL-9284',
-        type: 'Fire',
-        title: 'Thermal Breach Detected',
-        location: 'Industrial Sector 7',
-        severity: 'Critical',
-        time: '2 mins ago',
-        status: 'Active',
-        description: 'Multiple thermal anomalies detected in the primary chemical storage unit. Risk of structural failure is high. Immediate exclusion zone required.',
-        timestamp: '2026-03-31 22:15:42',
-        coordinates: '34.0522° N, 118.2437° W',
-        resources: '3 Fire Teams dispatched',
-        Icon: Flame,
-        color: '#ef4444'
-    },
-    {
-        id: 'AL-9285',
-        type: 'Flood',
-        title: 'Levee Integrity Warning',
-        location: 'Riverfront Alpha',
-        severity: 'Warning',
-        time: '8 mins ago',
-        status: 'Responding',
-        description: 'Water levels reaching critical limits at North Levee point. Internal sensors indicate minor seepage. Repair crews are on-site.',
-        timestamp: '2026-03-31 22:09:12',
-        coordinates: '34.1245° N, 118.1567° W',
-        resources: '1 Engineering Corps',
-        Icon: Droplets,
-        color: '#3b82f6'
-    },
-    {
-        id: 'AL-9286',
-        type: 'Medical',
-        title: 'Multi-Casualty Event',
-        location: 'Central Plaza',
-        severity: 'Critical',
-        time: '12 mins ago',
-        status: 'Active',
-        description: 'Large scale medical emergency reported following structural collapse. Heavy smoke in the area. Triage stations established.',
-        timestamp: '2026-03-31 22:05:01',
-        coordinates: '34.0456° N, 118.2589° W',
-        resources: '5 Ambulances, 2 Mobile Med Units',
-        Icon: Activity,
-        color: '#10b981'
-    },
-    {
-        id: 'AL-9287',
-        type: 'Accident',
-        title: 'High-Velocity Collision',
-        location: 'Highway 101-North',
-        severity: 'Low',
-        time: '25 mins ago',
-        status: 'Resolved',
-        description: 'Multi-vehicle collision blocking three lanes. No hazardous material leaked. Cleanup in progress.',
-        timestamp: '2026-03-31 21:52:18',
-        coordinates: '34.0987° N, 118.3214° W',
-        resources: 'Highway Patrol, Towing Unit',
-        Icon: Truck,
-        color: '#f59e0b'
-    },
-    {
-        id: 'AL-9288',
-        type: 'Fire',
-        title: 'Brush Fire Escalation',
-        location: 'Canyon Ridge',
-        severity: 'Critical',
-        time: '45 mins ago',
-        status: 'Active',
-        description: 'Rapidly spreading brush fire due to high wind speeds. Residents in evacuation zone 4 must leave immediately.',
-        timestamp: '2026-03-31 21:32:05',
-        coordinates: '34.1567° N, 118.4123° W',
-        resources: 'Aerial Support, Fire Group 12',
-        Icon: Flame,
-        color: '#ef4444'
-    }
-];
+
 
 // ── CUSTOM COMPONENTS ──
 
@@ -172,12 +96,12 @@ function BroadcastModal({ isOpen, onClose, onBroadcast }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        // Simulate broadcast authorization
-        setTimeout(() => {
-            onBroadcast(formData);
+        try {
+            await onBroadcast(formData);
+        } finally {
             setIsSubmitting(false);
             onClose();
-        }, 1500);
+        }
     };
 
     return (
@@ -291,12 +215,45 @@ function BroadcastModal({ isOpen, onClose, onBroadcast }) {
 }
 
 function AlertsContent() {
-    const { isSidebarOpen, addToast } = useDashboard();
-    const [selectedAlert, setSelectedAlert] = useState(MOCK_ALERTS[0]);
+    const { isSidebarOpen, addToast, incidents: contextIncidents, addAlert, updateStatus, deleteIncidentAction, hasPermission, PERMISSIONS } = useDashboard();
     const [filterType, setFilterType] = useState('All');
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [isBroadcastOpen, setIsBroadcastOpen] = useState(false);
-    const [alerts, setAlerts] = useState(MOCK_ALERTS);
+
+    // Map context alerts to display format
+    const alerts = useMemo(() => {
+        return (contextIncidents || []).map(a => {
+            const typeMap = { fire: 'Fire', flood: 'Flood', medical: 'Medical', accident: 'Accident', wildfire: 'Fire', earthquake: 'Seismic', cyclone: 'Storm', collapse: 'Structural', chemical: 'Hazmat', other: 'Other' };
+            const iconMap = { fire: Flame, flood: Droplets, medical: HeartPulse, accident: AlertTriangle, wildfire: Flame, earthquake: Activity, cyclone: Activity, collapse: AlertTriangle, chemical: Activity, other: AlertTriangle };
+            const colorMap = { high: '#ef4444', critical: '#ef4444', medium: '#f59e0b', low: '#3b82f6' };
+            const sevMap = { high: 'Critical', critical: 'Critical', medium: 'Warning', low: 'Low' };
+            return {
+                id: a.id,
+                type: typeMap[a.type] || 'Other',
+                title: `${(typeMap[a.type] || 'Unknown').toUpperCase()} Incident`,
+                location: a.location || 'Unknown',
+                severity: sevMap[a.severity] || 'Low',
+                time: a.time || 'Unknown',
+                status: a.status || 'REPORTED',
+                description: a.description || 'No details available.',
+                timestamp: a.created_at ? new Date(a.created_at).toLocaleString() : 'N/A',
+                coordinates: a.latitude && a.longitude ? `${Number(a.latitude).toFixed(4)}° N, ${Number(a.longitude).toFixed(4)}° W` : 'N/A',
+                resources: 'Dispatch Pending',
+                Icon: iconMap[a.type] || AlertTriangle,
+                color: colorMap[a.severity] || '#3b82f6',
+                rawId: a.id,
+            };
+        });
+    }, [contextIncidents]);
+
+    const [selectedAlert, setSelectedAlert] = useState(null);
+
+    // Auto-select first alert
+    useEffect(() => {
+        if (alerts.length > 0 && !selectedAlert) {
+            setSelectedAlert(alerts[0]);
+        }
+    }, [alerts, selectedAlert]);
 
     useEffect(() => {
         const handleMouseMove = (e) => setMousePos({ x: e.clientX, y: e.clientY });
@@ -311,27 +268,37 @@ function AlertsContent() {
         });
     }, [filterType, alerts]);
 
-    const handleBroadcast = (data) => {
-        const newAlert = {
-            id: `AL-${Math.floor(1000 + Math.random() * 9000)}`,
-            type: data.type,
-            title: data.title,
-            location: data.location,
-            severity: data.severity,
-            time: 'Just Now',
-            status: 'Active',
-            description: data.description,
-            timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-            coordinates: 'LAT_LONG_FIXED',
-            resources: 'Dispatch_Pending',
-            Icon: data.type === 'Fire' ? Flame : data.type === 'Flood' ? Droplets : Activity,
-            color: data.severity === 'Critical' ? '#ef4444' : data.severity === 'Warning' ? '#f59e0b' : '#3b82f6'
-        };
-        
-        setAlerts([newAlert, ...alerts]);
-        setSelectedAlert(newAlert);
-        if (addToast) {
-            addToast('Alert created successfully', 'priority');
+    const handleBroadcast = async (data) => {
+        try {
+            const typeMap = { 'Fire': 'fire', 'Flood': 'flood', 'Medical': 'medical', 'Accident': 'accident', 'Terror': 'other' };
+            const sevMap = { 'Critical': 'high', 'Warning': 'medium', 'Low': 'low' };
+            await addAlert({
+                type: typeMap[data.type] || 'other',
+                location: data.location,
+                severity: sevMap[data.severity] || 'medium',
+                description: data.description,
+            });
+            addToast('Emergency alert broadcast sent', 'success');
+        } catch (err) {
+            addToast('Failed to broadcast alert', 'error');
+        }
+    };
+
+    const handleStatusChange = async (alertId, newStatus) => {
+        try {
+            await updateStatus(alertId, newStatus);
+        } catch (err) {
+            addToast('Failed to update status', 'error');
+        }
+    };
+
+    const handleDelete = async (alertId) => {
+        if (!window.confirm("Are you sure you want to delete this incident?")) return;
+        try {
+            await deleteIncidentAction(alertId);
+            setSelectedAlert(null);
+        } catch (err) {
+            addToast('Failed to delete incident', 'error');
         }
     };
 
@@ -387,10 +354,10 @@ function AlertsContent() {
 
                     {/* ── KPI GRID ── */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10 animate-fade-in">
-                        <StatCard label="Active Alerts" value={alerts.length} icon={Bell} color="#ef4444" />
+                        <StatCard label="Total Alerts" value={alerts.length} icon={Bell} color="#ef4444" />
                         <StatCard label="High Danger" value={alerts.filter(a => a.severity === 'Critical').length} icon={ShieldAlert} color="#ef4444" />
-                        <StatCard label="Teams Sent" value="28" icon={Truck} color="#3b82f6" />
-                        <StatCard label="Resolved Today" value="116" icon={CheckCircle2} color="#10b981" />
+                        <StatCard label="Active" value={alerts.filter(a => a.status === 'REPORTED' || a.status === 'ACTIVE').length} icon={Truck} color="#3b82f6" />
+                        <StatCard label="Resolved" value={alerts.filter(a => a.status === 'RESOLVED').length} icon={CheckCircle2} color="#10b981" />
                     </div>
 
                     {/* ── OPERATIONS WORKSPACE ── */}
@@ -526,12 +493,38 @@ function AlertsContent() {
 
                                         {/* Detail Actions */}
                                         <div className="p-8 lg:p-10 bg-white/[0.01] border-t border-white/5 flex gap-4">
-                                            <button className="flex-1 py-4 bg-red-600 text-white font-mono text-[10px] font-black uppercase tracking-[0.3em] hover:brightness-110 active:scale-95 transition-all shadow-lg">
-                                                SEND HELP NOW
-                                            </button>
-                                            <button className="px-10 py-4 bg-white/5 border border-white/10 text-white font-mono text-[10px] font-black uppercase tracking-[0.3em] hover:bg-white/10 transition-all">
-                                                MARK AS FIXED
-                                            </button>
+                                            {selectedAlert.status !== 'RESOLVED' && hasPermission(PERMISSIONS.UPDATE_STATUS) && (
+                                                <>
+                                                    {selectedAlert.status === 'REPORTED' && (
+                                                        <button onClick={() => handleStatusChange(selectedAlert.rawId || selectedAlert.id, 'ACTIVE')} className="flex-1 py-4 bg-red-600 text-white font-mono text-[10px] font-black uppercase tracking-[0.3em] hover:brightness-110 active:scale-95 transition-all shadow-lg">
+                                                            ACTIVATE RESPONSE
+                                                        </button>
+                                                    )}
+                                                    {selectedAlert.status === 'ACTIVE' && (
+                                                        <button onClick={() => handleStatusChange(selectedAlert.rawId || selectedAlert.id, 'CONTAINED')} className="flex-1 py-4 bg-amber-600 text-white font-mono text-[10px] font-black uppercase tracking-[0.3em] hover:brightness-110 active:scale-95 transition-all shadow-lg">
+                                                            MARK CONTAINED
+                                                        </button>
+                                                    )}
+                                                    {selectedAlert.status === 'CONTAINED' && (
+                                                        <button onClick={() => handleStatusChange(selectedAlert.rawId || selectedAlert.id, 'RESOLVED')} className="flex-1 py-4 bg-emerald-600 text-white font-mono text-[10px] font-black uppercase tracking-[0.3em] hover:brightness-110 active:scale-95 transition-all shadow-lg">
+                                                            MARK RESOLVED
+                                                        </button>
+                                                    )}
+                                                    <button onClick={() => handleStatusChange(selectedAlert.rawId || selectedAlert.id, 'RESOLVED')} className="px-10 py-4 bg-white/5 border border-white/10 text-white font-mono text-[10px] font-black uppercase tracking-[0.3em] hover:bg-white/10 transition-all">
+                                                        RESOLVE NOW
+                                                    </button>
+                                                </>
+                                            )}
+                                            {hasPermission(PERMISSIONS.DELETE_INCIDENT) && (
+                                                <button onClick={() => handleDelete(selectedAlert.rawId || selectedAlert.id)} className="px-8 py-4 bg-red-900/40 border border-red-500/30 text-red-400 font-mono text-[10px] font-black uppercase tracking-[0.3em] hover:bg-red-900/60 transition-all">
+                                                    DELETE
+                                                </button>
+                                            )}
+                                            {selectedAlert.status === 'RESOLVED' && (
+                                                <div className="flex-1 py-4 text-center font-mono text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500">
+                                                    ✓ INCIDENT RESOLVED
+                                                </div>
+                                            )}
                                         </div>
                                     </>
                                 ) : (
