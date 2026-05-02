@@ -43,11 +43,8 @@ export default function TopNavbar() {
 
     const handleLogout = async (e) => {
         if (e) e.stopPropagation();
-        console.log("TopNavbar: Initiating logout sequence...");
-        addToast('Terminating session...', 'info');
         try {
             await logout();
-            console.log("TopNavbar: Logout successful, navigating to landing.");
             navigate('/', { replace: true });
         } catch (err) {
             console.error("TopNavbar: Logout error:", err);
@@ -59,11 +56,18 @@ export default function TopNavbar() {
 
     return (
         <header
-            className={`fixed top-0 right-0 z-40 flex items-center transition-all duration-500 border-b border-white/5 px-4 md:px-10 gap-6 md:gap-12 bg-black/90 backdrop-blur-md will-change-transform ${isSidebarOpen ? 'left-sidebar-open' : 'left-sidebar-closed'}`}
+            className="w-full flex items-center border-b border-white/5 px-4 md:px-10 gap-4 md:gap-12 bg-black/90 backdrop-blur-md z-40 transition-all duration-300"
             style={{
                 height: H_NAV,
             }}
         >
+            {/* Mobile Overlay */}
+            {isSidebarOpen && (
+                <div 
+                    className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[-1]" 
+                    onClick={toggleSidebar}
+                />
+            )}
             {/* Command Trigger Toggle */}
             <button
                 onClick={toggleSidebar}

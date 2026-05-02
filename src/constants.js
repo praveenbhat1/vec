@@ -1,5 +1,5 @@
 export const SZ = {
-  sidebarClosed: 80,
+  sidebarClosed: 90,
   sidebarOpen:   280,
-  navbarH:       72,
+  navbarH:       80,
 };

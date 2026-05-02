@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
+import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
 import 'leaflet-defaulticon-compatibility';
@@ -28,6 +28,8 @@ import {
   Crosshair
 } from 'lucide-react';
 import { useDashboard } from '../context';
+import TopNavbar from '../components/TopNavbar';
+import Sidebar from '../components/Sidebar';
 
 const DISASTER_TYPES = [
   { value: 'flood', label: 'Flood / Flash Flood', icon: Droplets, iconName: 'Droplets' },
@@ -86,7 +88,7 @@ export default function ReportIncident() {
   const [locLoading, setLocLoading] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [previewLoc, setPreviewLoc] = useState({ lat: 13.3409, lng: 74.7421 }); // Default to Udupi
-  const { addAlert, addToast } = useDashboard();
+  const { addAlert, addToast, userRole, isSidebarOpen } = useDashboard();
 
   useEffect(() => {
     setReportId(Math.floor(Math.random() * 1000000).toString().padStart(6, '0'));
@@ -99,19 +101,26 @@ export default function ReportIncident() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
+  const [isGeocoding, setIsGeocoding] = useState(false);
+
   // Nomination Geocoding (Free OSM)
   useEffect(() => {
-    const timer = setTimeout(async () => {
-      const locStr = form.location.trim();
-      if (!locStr) return;
+    const locStr = form.location.trim();
+    if (!locStr) {
+      setIsGeocoding(false);
+      return;
+    }
 
-      // Check if it's already coordinates
+    const timer = setTimeout(async () => {
+      // Quick coordinate check
       const coordMatch = locStr.match(/^([-\d.]+),\s*([-\d.]+)$/);
       if (coordMatch) {
          setPreviewLoc({ lat: parseFloat(coordMatch[1]), lng: parseFloat(coordMatch[2]) });
+         setIsGeocoding(false);
          return;
       }
-      
+
+      setIsGeocoding(true);
       try {
          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locStr)}&limit=1`);
          const data = await res.json();
@@ -120,6 +129,8 @@ export default function ReportIncident() {
          }
       } catch (e) {
          console.error("Geocoding failed", e);
+      } finally {
+         setIsGeocoding(false);
       }
     }, 1200);
     return () => clearTimeout(timer);
@@ -133,29 +144,45 @@ export default function ReportIncident() {
   };
 
   const fetchGPSLocation = () => {
-    if (!navigator.geolocation) { addToast('GPS Not Supported', 'error'); return; }
+    if (!navigator.geolocation) {
+      addToast('GPS Not Supported', 'error');
+      return;
+    }
     setLocLoading(true);
+    setIsGeocoding(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
         const locStr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        
+        // Update both the string field and the map state
         set('location', locStr);
         setPreviewLoc({ lat, lng });
+        
         setLocLoading(false);
+        setIsGeocoding(false);
         addToast('GPS Coordinates Locked', 'success');
       },
-      () => { 
-          addToast('GPS Signal Failed', 'error');
-          setLocLoading(false); 
+      (error) => {
+        console.error("GPS Error:", error);
+        addToast('GPS Signal Failed', 'error');
+        setLocLoading(false);
+        setIsGeocoding(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
       }
     );
   };
 
   const handleMapClick = (latlng) => {
-      const locStr = `${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
-      set('location', locStr);
-      setPreviewLoc(latlng);
-      addToast('Location Updated via Map', 'info');
+    const { lat, lng } = latlng;
+    const locStr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    set('location', locStr);
+    setPreviewLoc({ lat, lng });
+    addToast('Location Updated via Map', 'info');
   };
 
   const validate = () => {
@@ -171,15 +198,36 @@ export default function ReportIncident() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (isGeocoding) {
+      addToast('Waiting for location lock...', 'warning');
+      return;
+    }
+
+    // Critical check: Ensure location is actually selected
+    if (!previewLoc || !form.location.trim()) {
+      alert("Location not selected. Please use GPS or click on the map.");
+      return;
+    }
+
     const errs = validate();
     setErrors(errs);
     if (Object.keys(errs).length) {
-        addToast('Please correct errors before dispatching.', 'error');
-        return;
+      addToast('Please correct errors before dispatching.', 'error');
+      return;
     }
 
     setLoading(true);
     try {
+      // Final coordinate check from input string
+      let finalLat = previewLoc.lat;
+      let finalLng = previewLoc.lng;
+      const coordMatch = form.location.match(/^([-\d.]+),\s*([-\d.]+)$/);
+      if (coordMatch) {
+          finalLat = parseFloat(coordMatch[1]);
+          finalLng = parseFloat(coordMatch[2]);
+      }
+
       const payload = {
         type: form.disasterType,
         location: form.location,
@@ -187,8 +235,8 @@ export default function ReportIncident() {
         description: form.description,
         reporter_name: form.name,
         reporter_phone: form.phone,
-        latitude: previewLoc?.lat || null,
-        longitude: previewLoc?.lng || null,
+        latitude: finalLat,
+        longitude: finalLng,
       };
       
       await addAlert(payload);
@@ -201,26 +249,101 @@ export default function ReportIncident() {
     }
   };
 
+  // AI Priority Calculation
+  const priorityScore = useMemo(() => {
+    if (!form.severity) return 0;
+    const base = { low: 20, medium: 50, high: 85, critical: 95 }[form.severity];
+    return base + Math.floor(Math.random() * 5); // Add slight variability
+  }, [form.severity]);
+
   if (success) return (
-    <div className="min-h-screen bg-[#08080A] text-[#E5E5E7] font-inter flex items-center justify-center p-8 overflow-hidden relative">
+    <div className="min-h-screen bg-[#08080A] text-[#E5E5E7] font-inter flex flex-col items-center justify-center p-8 overflow-y-auto relative py-20">
       <div className="absolute inset-0 pointer-events-none bg-green-500/5 blur-[160px]" />
-      <div className="max-w-[600px] w-full bg-white/5 border border-green-500/20 backdrop-blur-3xl p-16 text-center animate-slide-up relative z-10">
-        <div className="w-24 h-24 bg-green-500/10 border border-green-500/40 flex items-center justify-center mx-auto mb-10">
-          <CheckCircle2 className="w-12 h-12 text-green-500" />
+      
+      <div className="max-w-[700px] w-full space-y-8 relative z-10">
+        <div className="bg-white/5 border border-green-500/20 backdrop-blur-3xl p-12 text-center animate-slide-up">
+          <div className="w-20 h-20 bg-green-500/10 border border-green-500/40 flex items-center justify-center mx-auto mb-8">
+            <CheckCircle2 className="w-10 h-10 text-green-500" />
+          </div>
+          <span className="text-[10px] font-mono text-green-500 tracking-[0.5em] uppercase block mb-6">HELP IS ON THE WAY</span>
+          <h2 className="font-outfit text-4xl font-black tracking-tighter uppercase mb-6">REPORT RECEIVED</h2>
+          <p className="text-white/40 font-light text-sm mb-8">
+            Report ID: <span className="text-[#00FFCC] font-mono">#RI-{reportId}</span>
+          </p>
+
+          {/* AI PRIORITY BADGE */}
+          <div className="inline-flex items-center gap-4 px-6 py-3 bg-white/5 border border-white/10 mb-10">
+            <div className="flex flex-col items-start">
+               <span className="text-[8px] font-mono text-white/40 uppercase tracking-widest">AI_PRIORITY_SCORE</span>
+               <span className="text-xl font-outfit font-black" style={{ color: priorityScore > 80 ? '#ef4444' : (priorityScore > 50 ? '#f59e0b' : '#10b981') }}>
+                 {priorityScore}% - {priorityScore > 80 ? 'HIGH RISK' : (priorityScore > 50 ? 'MODERATE' : 'STABLE')}
+               </span>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-6 mb-12">
+            <button onClick={() => nav('/dashboard')} className="px-10 py-5 bg-[#00FFCC] text-black font-outfit font-black uppercase tracking-widest hover:brightness-110 transition-all text-xs">
+              View Updates
+            </button>
+            <button onClick={() => { setSuccess(false); setForm({ name: '', phone: '', location: '', disasterType: '', severity: '', description: '' }); setFiles([]); }} className="px-10 py-5 bg-white/5 border border-white/10 text-white font-outfit font-black uppercase tracking-widest hover:bg-white/10 transition-all text-xs">
+              New Report
+            </button>
+          </div>
         </div>
-       <span className="text-[10px] font-mono text-green-500 tracking-[0.5em] uppercase block mb-6">HELP IS ON THE WAY</span>
-        <h2 className="font-outfit text-5xl font-black tracking-tighter uppercase mb-8">REPORT RECEIVED</h2>
-        <p className="text-white/40 font-light text-lg mb-12">
-          Your emergency report has been sent to the nearest rescue teams.
-          Report ID: <span className="text-[#00FFCC] font-mono">#RI-{reportId}</span>
-        </p>
-        <div className="flex flex-col sm:flex-row gap-6 justify-center">
-          <button onClick={() => nav('/dashboard')} className="px-10 py-5 bg-[#00FFCC] text-black font-outfit font-black uppercase tracking-widest hover:brightness-110 transition-all">
-            View Updates
-          </button>
-          <button onClick={() => { setSuccess(false); setForm({ name: '', phone: '', location: '', disasterType: '', severity: '', description: '' }); setFiles([]); }} className="px-10 py-5 bg-white/5 border border-white/10 text-white font-outfit font-black uppercase tracking-widest hover:bg-white/10 transition-all">
-            New Report
-          </button>
+
+        {/* RESOURCE ASSIGNMENT CARD */}
+        <div className="bg-white/5 border border-blue-500/20 backdrop-blur-3xl p-8 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+           <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                 <div className="w-10 h-10 bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                    <Shield className="w-5 h-5 text-blue-500" />
+                 </div>
+                 <div className="flex flex-col">
+                    <span className="text-[9px] font-mono text-blue-500 uppercase tracking-widest">AUTO_RESOURCE_DISPATCH</span>
+                    <span className="text-lg font-outfit font-black uppercase">Nearest Unit Assigned</span>
+                 </div>
+              </div>
+              <div className="text-right">
+                 <span className="text-[9px] font-mono text-white/20 uppercase block mb-1">ESTIMATED_ETA</span>
+                 <span className="text-2xl font-outfit font-black text-[#00FFCC]">4.5 MIN</span>
+              </div>
+           </div>
+           <div className="p-4 bg-black/40 border border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                 <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                 <span className="text-[10px] font-mono text-white/60 uppercase tracking-widest">UNIT_DELTA_9 (AMBULANCE)</span>
+              </div>
+              <span className="text-[10px] font-mono text-blue-500">EN_ROUTE</span>
+           </div>
+        </div>
+
+        {/* INCIDENT TIMELINE */}
+        <div className="bg-white/5 border border-white/5 backdrop-blur-3xl p-8 animate-slide-up" style={{ animationDelay: '0.4s' }}>
+           <span className="text-[10px] font-mono text-white/20 uppercase tracking-[0.4em] block mb-8">INCIDENT_TIMELINE</span>
+           <div className="space-y-8 relative">
+              <div className="absolute left-4 top-2 bottom-2 w-[1px] bg-white/10" />
+              {[
+                { label: 'Incident Reported', time: 'Just Now', status: 'completed' },
+                { label: 'Priority Calculated', time: 'Just Now', status: 'completed' },
+                { label: 'Responder Assigned', time: 'Searching...', status: 'loading' },
+                { label: 'Unit Dispatched', time: '--:--', status: 'pending' },
+              ].map((step, i) => (
+                <div key={i} className="flex items-center gap-8 relative pl-1">
+                   <div className={`w-6 h-6 rounded-full border-4 border-[#08080A] z-10 flex items-center justify-center ${
+                     step.status === 'completed' ? 'bg-[#00FFCC]' : 
+                     (step.status === 'loading' ? 'bg-blue-500 animate-pulse' : 'bg-white/10')
+                   }`}>
+                     {step.status === 'completed' && <CheckCircle2 className="w-3 h-3 text-black" />}
+                   </div>
+                   <div className="flex flex-col">
+                      <span className={`text-xs font-outfit font-black uppercase tracking-tight ${step.status === 'pending' ? 'text-white/20' : 'text-white'}`}>
+                        {step.label}
+                      </span>
+                      <span className="text-[9px] font-mono text-white/30 uppercase">{step.time}</span>
+                   </div>
+                </div>
+              ))}
+           </div>
         </div>
       </div>
     </div>
@@ -240,30 +363,10 @@ export default function ReportIncident() {
       </div>
 
       {/* ── TACTICAL NAV ── */}
-      <nav className="fixed top-0 left-0 right-0 z-[1000] bg-black/40 backdrop-blur-3xl border-b border-white/5 py-6 px-8">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-between">
-           <Link to="/" className="flex items-center gap-4 group">
-            <div className="w-10 h-10 bg-white/5 border border-red-500/20 flex items-center justify-center group-hover:border-red-500/40 transition-all">
-              <Shield className="w-5 h-5 text-red-500" />
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="font-outfit font-black text-xl tracking-tighter uppercase">CRISISCHAIN</span>
-              <span className="text-[9px] font-mono text-red-400 tracking-[0.4em] opacity-60 uppercase">Emergency Help Portal</span>
-            </div>
-          </Link>
-          <div className="flex items-center gap-4">
-             <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-red-500/10 border border-red-500/20 text-red-500">
-                <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                <span className="text-[9px] font-mono tracking-widest uppercase font-bold">Priority Line Active</span>
-             </div>
-             <button onClick={() => nav('/')} className="px-6 py-2 border border-white/10 hover:bg-white/5 transition-all text-xs font-mono uppercase tracking-widest text-white/40">
-               ← CANCEL
-             </button>
-          </div>
-        </div>
-      </nav>
+      <TopNavbar />
+      {userRole !== 'victim' && <Sidebar />}
 
-      <main className="relative z-10 pt-32 pb-40 px-8">
+      <main className={`relative z-10 pt-32 pb-40 px-8 transition-all duration-300 ${isSidebarOpen ? 'ml-sidebar-open' : ''}`}>
         <div className="max-w-[1000px] mx-auto">
           
           <div className="mb-20 text-center">

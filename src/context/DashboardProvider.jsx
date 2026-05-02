@@ -35,8 +35,20 @@ import { DashboardContext } from './DashboardContext';
 
 export function DashboardProvider({ children }) {
     // --- STATE ---
-    const [user, setUser] = useState(null);
-    const [profile, setProfile] = useState(null);
+    const [user, setUser] = useState(() => {
+        try {
+            const cached = localStorage.getItem('cc_guest_session');
+            if (cached) return JSON.parse(cached).user;
+            return null;
+        } catch (e) { return null; }
+    });
+    const [profile, setProfile] = useState(() => {
+        try {
+            const cached = localStorage.getItem('cc_guest_session');
+            if (cached) return JSON.parse(cached).profile;
+            return null;
+        } catch (e) { return null; }
+    });
     const [loading, setLoading] = useState(true);
     
     // Initialize state from localStorage to prevent "vanishing" on refresh
@@ -77,7 +89,7 @@ export function DashboardProvider({ children }) {
         } catch (e) {
             return defaultStats;
         }
-    });
+    });    
     const [organizations, setOrganizations] = useState(() => {
         try {
             const cached = localStorage.getItem('cc_orgs');
@@ -106,8 +118,26 @@ export function DashboardProvider({ children }) {
     const [actions, setActions] = useState([]);
     const [messages, setMessages] = useState([]);
     const [workflowId, setWorkflowId] = useState(1);
+    
+    // --- NEW INTELLIGENCE STATE ---
+    const [selectedIncidentId, setSelectedIncidentId] = useState(null);
+    const [responders, setResponders] = useState([]);
+    const [recommendations, setRecommendations] = useState([]);
+    const [autoResponseMode, setAutoResponseMode] = useState(false);
 
-    // --- PERSISTENCE ---
+    // --- PERSISTENCE & CACHE SANITIZATION ---
+    useEffect(() => {
+        const cached = localStorage.getItem('cc_stats');
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                if (parsed.total === 72 && parsed.active === 38) {
+                    localStorage.removeItem('cc_stats');
+                }
+            } catch (e) {}
+        }
+    }, []);
+
     useEffect(() => {
         localStorage.setItem('cc_incidents', JSON.stringify(incidents));
     }, [incidents]);
@@ -183,40 +213,97 @@ export function DashboardProvider({ children }) {
 
         const withResponse = incs.filter(i => i.responseTimeMinutes != null);
         const avgResponse = withResponse.length > 0
-            ? (withResponse.reduce((sum, i) => sum + i.responseTimeMinutes, 0) / withResponse.length).toFixed(1)
+            ? (withResponse.reduce((sum, i) => sum + Number(i.responseTimeMinutes || 0), 0) / withResponse.length).toFixed(1)
             : '0.0';
+
+        const criticalCount = (severityMap.critical || 0) + (severityMap.high || 0);
 
         return {
             total, active, contained, severity: severityMap,
-            responseTime: avgResponse, criticalIncidents: severityMap.critical || 0
+            responseTime: avgResponse, criticalIncidents: criticalCount
         };
-    }, []);
+    }, [incidents]);
 
-    // --- DATA FETCHING (PUBLIC CLIENT) ---
+    // Intelligence Side-Effects: Derived from Stats
+    useEffect(() => {
+        if (!stats) return;
+
+        const newRecs = [];
+        if (stats.criticalIncidents > 0) {
+            newRecs.push({
+                id: Date.now() + 1,
+                priority: 'CRITICAL',
+                text: `Deploy immediate medical support to Sector ${Math.floor(Math.random() * 50) + 100}`,
+                action: 'DEPLOY_AIR_AMBULANCE'
+            });
+        }
+        const tacticalLoad = Math.round((stats.active / (stats.total || 1)) * 100);
+        if (tacticalLoad > 60) {
+            newRecs.push({
+                id: Date.now() + 3,
+                priority: 'SYSTEM',
+                text: `System load exceeding 60% (${tacticalLoad}%). Optimizing resource routing...`,
+                action: 'OPTIMIZE_LOGISTICS'
+            });
+        }
+        setRecommendations(newRecs);
+    }, [stats]);
+
+    // --- DATA FETCHING (PURE SUPABASE) ---
     const refreshData = useCallback(async () => {
         try {
-            console.log("DashboardContext: [SYNC] Fetching from Public Client...");
-            const [incData, resData, orgData, msgData, logData, profData] = await Promise.all([
+            console.log("DashboardContext: [SYNC] Fetching live data from Supabase...");
+            
+            // Background seed check to ensure 72 items exist in cloud
+            await seedDatabaseIfEmpty();
+
+            const results = await Promise.allSettled([
                 supabase.from('incidents').select('*').order('created_at', { ascending: false }).then(r => r.data || []),
                 supabase.from('resources').select('*').order('name').then(r => r.data || []),
                 supabase.from('organizations').select('*').order('name').then(r => r.data || []),
                 supabase.from('messages').select('*').order('created_at', { ascending: false }).limit(20).then(r => r.data || []),
-                supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(15).then(r => r.data || []),
+                supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(20).then(r => r.data || []),
                 supabase.from('profiles').select('*').order('name').then(r => r.data || [])
             ]);
+
+            const incData = results[0].status === 'fulfilled' ? results[0].value : [];
+            const resData = results[1].status === 'fulfilled' ? results[1].value : [];
+            const orgData = results[2].status === 'fulfilled' ? results[2].value : [];
+            const msgData = results[3].status === 'fulfilled' ? results[3].value : [];
+            const logData = results[4].status === 'fulfilled' ? results[4].value : [];
+            const profData = results[5].status === 'fulfilled' ? results[5].value : [];
             
             const mappedIncs = incData.map(mapIncidentToAlert);
             setIncidents(mappedIncs);
             setResources(resData);
             setOrganizations(orgData);
             setProfiles(profData);
-            setActions(logData);
+            const mappedActions = logData.map(log => {
+                const priorityMatch = log.details.match(/\[PRIORITY:(.*?)\]/);
+                const sourceMatch = log.details.match(/\[SOURCE:(.*?)\]/);
+                const cleanDetails = log.details.replace(/\[PRIORITY:.*?\]/g, '').replace(/\[SOURCE:.*?\]/g, '').trim();
+                
+                return {
+                    id: log.id,
+                    title: log.action_type.replace(/_/g, ' '),
+                    details: cleanDetails,
+                    priority: priorityMatch ? priorityMatch[1] : 'Medium',
+                    source: sourceMatch ? sourceMatch[1] : 'SYSTEM',
+                    time: formatTimeAgo(log.created_at),
+                    created_at: log.created_at
+                };
+            });
+            setActions(mappedActions);
             setStats(calculateStatsFromIncidents(mappedIncs));
-            setMessages(msgData.map(m => ({
-                ...m,
-                time: new Date(m.created_at).toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' })
-            })));
-            console.log(`DashboardContext: [SYNC_COMPLETE] Found ${mappedIncs.length} incidents.`);
+            setMessages(msgData.map(m => {
+                let timeStr = 'Just now';
+                try {
+                    if (m.created_at) {
+                        timeStr = new Date(m.created_at).toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' });
+                    }
+                } catch (e) { console.error("Time Parse Error", e); }
+                return { ...m, time: timeStr };
+            }));
         } catch (err) {
             console.error('DashboardContext: [SYNC_ERROR]', err);
         }
@@ -225,62 +312,164 @@ export function DashboardProvider({ children }) {
     // --- INITIALIZATION ---
     useEffect(() => {
         let mounted = true;
-        const failsafe = setTimeout(() => mounted && setLoading(false), 5000);
 
         const init = async () => {
             try {
-                // Background Seed Check
-                seedDatabaseIfEmpty().catch(() => {});
-
                 // Initial Sync
                 await refreshData();
 
-                // Auth Check
+                // 1. Check for Tactical Guest Session first (Persistence Fix)
+                const cachedGuest = localStorage.getItem('cc_guest_session');
+                if (cachedGuest && cachedGuest !== 'undefined') {
+                    const { user: gUser, profile: gProfile } = JSON.parse(cachedGuest);
+                    if (mounted && gUser && gProfile) {
+                        setUser(gUser);
+                        setProfile(gProfile);
+                        setLoading(false);
+                        return; // Found valid tactical session
+                    }
+                }
+
+                // 2. Check Supabase Auth
                 const { data: { session } } = await supabase.auth.getSession();
                 if (mounted && session?.user) {
                     setUser(session.user);
-                    getProfile(session.user.id).then(p => mounted && setProfile(p));
+                    const p = await getProfile(session.user.id);
+                    if (mounted) setProfile(p);
                 }
             } catch (err) {
                 console.error("DashboardContext: [INIT_ERROR]", err);
             } finally {
                 if (mounted) {
                     setLoading(false);
-                    clearTimeout(failsafe);
                 }
             }
         };
 
         init();
+        
+        // Failsafe: Ensure loading is disabled after a maximum of 3 seconds 
+        // to prevent infinite "AUTHENTICATING..." screens on network/init hang.
+        const loadingFailsafe = setTimeout(() => {
+            if (mounted) {
+                setLoading(current => {
+                    if (current) console.warn("DashboardContext: [FAILSAFE_TRIGGERED] Auth took too long.");
+                    return false;
+                });
+            }
+        }, 3000);
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (mounted) {
-                setUser(session?.user ?? null);
-                if (session?.user) {
-                    getProfile(session.user.id).then(p => mounted && setProfile(p));
-                    refreshData();
-                } else {
-                    setProfile(null);
+            if (!mounted) return;
+
+            // If we have a manual demo session, ignore Supabase auth changes unless it's a SIGN_OUT
+            const isDemo = localStorage.getItem('cc_guest_session');
+            if (isDemo && event !== 'SIGNED_OUT') {
+                setLoading(false);
+                return;
+            }
+
+            // Start loading while we re-sync profile
+            let authChangeFailsafe = null;
+            if (event === 'SIGNED_IN') {
+                setLoading(true);
+                authChangeFailsafe = setTimeout(() => {
+                    if (mounted) setLoading(false);
+                }, 3000);
+            }
+
+            setUser(session?.user ?? null);
+            if (!session?.user) {
+                setProfile(null);
+            }
+            
+            if (session?.user) {
+                try {
+                    const p = await getProfile(session.user.id);
+                    if (mounted) {
+                        // Fallback profile if DB entry is missing
+                        if (!p) {
+                            setProfile({
+                                id: session.user.id,
+                                name: session.user.user_metadata?.name || 'Authorized Responder',
+                                role: 'official', // Default to official for recognized auth
+                                email: session.user.email
+                            });
+                        } else {
+                            setProfile(p);
+                        }
+                        await refreshData();
+                    }
+                } catch (err) {
+                    console.error("Profile Fetch Error:", err);
+                    // Critical Fallback to prevent RoleGuard lockout
+                    if (mounted) {
+                        setProfile({
+                            id: session.user.id,
+                            name: session.user.user_metadata?.name || 'Authorized Responder',
+                            role: 'official',
+                            email: session.user.email
+                        });
+                    }
+                } finally {
+                    if (mounted) {
+                        setLoading(false);
+                        if (authChangeFailsafe) clearTimeout(authChangeFailsafe);
+                    }
                 }
+            } else {
+                setProfile(null);
+                setLoading(false);
+                if (authChangeFailsafe) clearTimeout(authChangeFailsafe);
             }
         });
 
         return () => {
             mounted = false;
+            clearTimeout(loadingFailsafe);
             subscription?.unsubscribe();
-            clearTimeout(failsafe);
         };
     }, [refreshData]);
 
-    // --- REALTIME ---
+    // --- REALTIME & POLLING ---
     useEffect(() => {
         const sub = supabase.channel('dashboard-sync')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents' }, () => refreshData())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, () => refreshData())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => refreshData())
             .subscribe();
-        return () => { sub.unsubscribe(); };
+        
+        // Polling as a secondary sync mechanism for intelligent state
+        const poll = setInterval(refreshData, 15000);
+        
+        return () => { 
+            sub.unsubscribe(); 
+            clearInterval(poll);
+        };
     }, [refreshData]);
+
+    // --- RESPONDER MOVEMENT SIMULATION ---
+    useEffect(() => {
+        const initialResponders = [
+            { id: 'R1', name: 'UNIT_ALPHA', type: 'AMBULANCE', coords: [13.345, 74.745] },
+            { id: 'R2', name: 'UNIT_BRAVO', type: 'FIRE_TRUCK', coords: [13.335, 74.735] },
+            { id: 'R3', name: 'UNIT_CHARLIE', type: 'POLICE', coords: [13.355, 74.755] },
+            { id: 'R4', name: 'UNIT_DELTA', type: 'RESCUE', coords: [13.325, 74.725] },
+        ];
+        setResponders(initialResponders);
+
+        const movement = setInterval(() => {
+            setResponders(prev => prev.map(r => ({
+                ...r,
+                coords: [
+                    r.coords[0] + (Math.random() - 0.5) * 0.001,
+                    r.coords[1] + (Math.random() - 0.5) * 0.001
+                ]
+            })));
+        }, 3000);
+
+        return () => clearInterval(movement);
+    }, []);
 
     // --- ACTIONS ---
     const addToast = useCallback((message, type = 'info') => {
@@ -289,29 +478,70 @@ export function DashboardProvider({ children }) {
         setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
     }, []);
 
-    const login = async (formData) => {
+    const login = useCallback(async (formData) => {
         setLoading(true);
         try {
+            // --- TACTICAL DEMO BYPASS (RESTORED PER USER REQUEST) ---
+            const isDemoEmail = formData.email === 'lak@gmail.com';
+            const isDemoPass = formData.password === 'password' || formData.password === 'lak123@#';
+            
+            if (isDemoEmail && isDemoPass) {
+                const demoUser = { id: 'demo-lak', email: 'lak@gmail.com', user_metadata: { name: 'LAKSHYA' } };
+                const demoProfile = { id: 'demo-lak', name: 'LAKSHYA', role: 'admin', email: 'lak@gmail.com' };
+                
+                setUser(demoUser);
+                setProfile(demoProfile);
+                localStorage.setItem('cc_guest_session', JSON.stringify({ user: demoUser, profile: demoProfile }));
+                
+                setLoading(false);
+                addToast('Tactical Demo Access Granted', 'success');
+                return { user: demoUser };
+            }
+
             const data = await signIn(formData);
             addToast('Access Granted', 'success');
             return data;
         } catch (err) {
             addToast(err.message, 'error');
             throw err;
-        } finally { setLoading(false); }
-    };
+        } finally { 
+            setLoading(false); 
+        }
+    }, [addToast]);
 
-    const logout = async () => {
+    const loginAsGuest = useCallback(async (role = 'official') => {
         setLoading(true);
         try {
-            await signOut();
-            addToast('Logged Out', 'info');
-        } finally {
-            setUser(null);
-            setProfile(null);
-            setLoading(false);
-        }
-    };
+            // Mock tactical session
+            const mockUser = { id: 'guest-node', email: 'tactical@crisischain.net', user_metadata: { full_name: 'TACTICAL_OPERATIVE' } };
+            const mockProfile = { id: 'guest-node', name: 'TACTICAL_OPERATIVE', role: role, organization: 'GOC_COMMAND' };
+            
+            setUser(mockUser);
+            setProfile(mockProfile);
+            localStorage.setItem('cc_guest_session', JSON.stringify({ user: mockUser, profile: mockProfile }));
+            addToast('Emergency Guest Access Granted', 'warning');
+            return { user: mockUser };
+        } finally { setLoading(false); }
+    }, [addToast]);
+
+    const logout = useCallback(async () => {
+        // Step 1: Clear all localStorage cache immediately to prevent stale rehydration
+        localStorage.removeItem('cc_guest_session');
+        localStorage.removeItem('cc_incidents');
+        localStorage.removeItem('cc_resources');
+        localStorage.removeItem('cc_stats');
+        localStorage.removeItem('cc_orgs');
+        localStorage.removeItem('cc_profiles');
+
+        // Step 2: Clear React state immediately so UI reacts at once
+        setUser(null);
+        setProfile(null);
+
+        // Step 3: Fire Supabase signOut in the background (non-blocking)
+        signOut().catch((err) => console.error('signOut error (non-blocking):', err));
+
+        addToast('Session terminated', 'info');
+    }, [addToast]);
 
     const createResourceAction = async (res) => {
         try {
@@ -337,34 +567,87 @@ export function DashboardProvider({ children }) {
         }
     };
 
-    const addAlert = async (alert) => {
+    const updateStatus = useCallback(async (id, status) => {
         try {
-            const created = await createIncident({
-                ...alert,
-                status: 'REPORTED',
-                user_id: user?.id || null,
-                severity: (alert.severity || 'medium').toLowerCase()
-            });
-            await refreshData();
-            addToast('Incident Reported', 'success');
-            return mapIncidentToAlert(created);
-        } catch (err) {
-            addToast('Report Failed', 'error');
-            throw err;
-        }
-    };
+            const { error } = await supabase.from('incidents').update({ status }).eq('id', id);
+            if (error) throw error;
 
-    const updateStatus = async (id, status) => {
+            // Enhanced Logging for Command System
+            await supabase.from('activity_logs').insert([{
+                user_id: user?.id,
+                action_type: 'STATUS_UPDATE',
+                details: `Incident ${id} status updated to: ${status}. [PRIORITY:High] [SOURCE:COMMAND_CENTER]`
+            }]);
+
+            addToast(`Status: ${status}`, 'success');
+            refreshData();
+        } catch (err) { addToast('Update failed', 'error'); }
+    }, [user?.id, addToast, refreshData]);
+
+    const addAlert = useCallback(async (alert) => {
         try {
-            await updateIncident(id, { status: status.toUpperCase() });
-            await refreshData();
-            addToast('Status Updated', 'success');
-        } catch (err) {
-            addToast('Update Failed', 'error');
-        }
-    };
+            console.log("DashboardContext: [UPLINK] Broadcasting alert:", alert);
+            const { data, error } = await supabase.from('incidents').insert([
+                { ...alert, status: 'REPORTED', created_at: new Date().toISOString() }
+            ]).select();
+            
+            if (error) throw error;
+            
+            addToast(`Emergency Broadcast: ${alert.type.toUpperCase()}`, 'warning');
+            
+            // Log the creation
+            await supabase.from('activity_logs').insert([{
+                user_id: user?.id,
+                action_type: 'ALERT_BROADCAST',
+                details: `System broadcast alert: ${alert.type} at ${alert.location}. [PRIORITY:High] [SOURCE:REPORTER]`
+            }]);
 
-    const deleteIncidentAction = async (id) => {
+            // Auto Response Logic
+            if (autoResponseMode && data?.[0]) {
+                const incId = data[0].id;
+                setTimeout(async () => {
+                    await updateStatus(incId, 'ACTIVE');
+                    addToast(`AUTO_RESPONSE: Dispatching units to ${alert.location}`, 'success');
+                }, 1500);
+            }
+
+            refreshData();
+        } catch (err) { addToast('Broadcast failed', 'error'); }
+    }, [user?.id, autoResponseMode, addToast, refreshData, updateStatus]);
+
+    const allocateResource = useCallback(async (resourceId, quantity) => {
+        try {
+            const resource = resources.find(r => r.id === resourceId);
+            if (!resource) return;
+
+            const newAvailable = Math.max(0, (resource.available ?? resource.total) - quantity);
+            const { error } = await supabase.from('resources').update({ 
+                available: newAvailable,
+                deployed: (resource.deployed || 0) + quantity 
+            }).eq('id', resourceId);
+
+            if (error) throw error;
+
+            await supabase.from('activity_logs').insert([{
+                user_id: user?.id,
+                action_type: 'RESOURCE_ALLOCATED',
+                details: `Allocated ${quantity} of ${resource.name}. Remaining: ${newAvailable}`
+            }]);
+
+            addToast(`Allocation Successful: ${quantity} units`, 'success');
+            refreshData();
+        } catch (err) { addToast('Allocation failed', 'error'); }
+    }, [user?.id, resources, addToast, refreshData]);
+
+    const updateResource = useCallback(async (id, updates) => {
+        try {
+            const { error } = await supabase.from('resources').update(updates).eq('id', id);
+            if (error) throw error;
+            refreshData();
+        } catch (err) { addToast('Update failed', 'error'); }
+    }, [addToast, refreshData]);
+
+    const deleteIncidentAction = useCallback(async (id) => {
         try {
             const { error } = await supabase.from('incidents').delete().eq('id', id);
             if (error) throw error;
@@ -373,7 +656,7 @@ export function DashboardProvider({ children }) {
         } catch (err) {
             addToast('Delete Failed', 'error');
         }
-    };
+    }, [addToast, refreshData]);
 
     const addMessage = async (sender, text) => {
         try {
@@ -389,28 +672,66 @@ export function DashboardProvider({ children }) {
         return icons[name] || AlertCircle;
     }, []);
 
+    const signup = async (formData) => {
+        setLoading(true);
+        try {
+            const data = await supabaseSignUp(formData);
+            addToast('Registration Successful', 'success');
+            return data;
+        } catch (err) {
+            addToast(err.message, 'error');
+            throw err;
+        } finally { setLoading(false); }
+    };
+
+    const contextValue = useMemo(() => ({
+        // ── AUTH & RBAC ──
+        user, profile, loading,
+        userRole: profile?.role || ROLES.USER,
+        hasPermission: (perm) => rbacHasPermission(profile?.role || ROLES.USER, perm),
+        PERMISSIONS,
+        getDefaultRoute: () => getDefaultRoute(profile?.role || ROLES.USER),
+        // ── DATA ──
+        incidents, actions, messages, resources, stats, organizations, profiles, toasts,
+        // ── UI STATE ──
+        isSidebarOpen, isMobileMenuOpen, toggleSidebar: () => setIsSidebarOpen(!isSidebarOpen),
+        closeSidebar: () => setIsSidebarOpen(false), toggleMobileMenu: () => setIsMobileMenuOpen(!isMobileMenuOpen),
+        // ── ACTIONS ──
+        login, loginAsGuest, signup, logout, addMessage, addAlert, updateStatus, createResourceAction, deleteIncidentAction,
+        addOrganization: async (o) => { await supabase.from('organizations').insert([o]); refreshData(); },
+        updateOrganization: async (id, u) => { await supabase.from('organizations').update(u).eq('id', id); refreshData(); },
+        deleteOrganization: async (id) => { await supabase.from('organizations').delete().eq('id', id); refreshData(); },
+        updateProfileRole: async (id, r) => { await supabase.from('profiles').update({ role: r }).eq('id', id); refreshData(); },
+        deleteProfile: async (id) => { await supabase.from('profiles').delete().eq('id', id); refreshData(); },
+        getIcon, searchQuery, setSearchQuery, addToast, refreshData, getIconName, formatTimeAgo, workflowId, advanceWorkflow: () => setWorkflowId(w => Math.min(w + 1, 4)),
+        // ── INTELLIGENCE ──
+        selectedIncidentId, setSelectedIncidentId, 
+        selectedIncident: incidents.find(i => i.id === selectedIncidentId),
+        responders, recommendations,
+        executeAction: async (id, action) => {
+            addToast(`EXECUTING: ${action}`, 'success');
+            setRecommendations(prev => prev.filter(r => r.id !== id));
+            await supabase.from('activity_logs').insert([{
+                user_id: user?.id,
+                action_type: 'AI_DECISION_EXECUTE',
+                details: `Operator executed recommended action: ${action}. [PRIORITY:High] [SOURCE:AI_CORE]`
+            }]);
+            await addMessage('SYSTEM_AI', `COMMAND_EXECUTED: ${action} [REF_ID: ${id}]`);
+            refreshData();
+        },
+        autoResponseMode, setAutoResponseMode,
+        allocateResource,
+        acknowledgeAction: async (id) => { addToast('Action Acknowledged', 'success'); },
+        escalateAction: async (id) => { addToast('Protocol C4 Escalated', 'warning'); }
+    }), [
+        user, profile, loading, incidents, actions, messages, resources, stats, organizations, profiles, toasts,
+        isSidebarOpen, isMobileMenuOpen, searchQuery, workflowId, selectedIncidentId, responders, recommendations, autoResponseMode,
+        login, loginAsGuest, signup, logout, addMessage, addAlert, updateStatus, createResourceAction, deleteIncidentAction,
+        getIcon, setSearchQuery, addToast, refreshData, getIconName, formatTimeAgo, allocateResource
+    ]);
+
     return (
-        <DashboardContext.Provider value={{
-            // ── AUTH & RBAC ──
-            user, profile, loading,
-            userRole: profile?.role || ROLES.USER,
-            hasPermission: (perm) => rbacHasPermission(profile?.role || ROLES.USER, perm),
-            PERMISSIONS,
-            getDefaultRoute: () => getDefaultRoute(profile?.role || ROLES.USER),
-            // ── DATA ──
-            incidents, actions, messages, resources, stats, organizations, profiles, toasts,
-            // ── UI STATE ──
-            isSidebarOpen, isMobileMenuOpen, toggleSidebar: () => setIsSidebarOpen(!isSidebarOpen),
-            closeSidebar: () => setIsSidebarOpen(false), toggleMobileMenu: () => setIsMobileMenuOpen(!isMobileMenuOpen),
-            // ── ACTIONS ──
-            login, signup: () => {}, logout, addMessage, addAlert, updateStatus, createResourceAction, deleteIncidentAction,
-            addOrganization: async (o) => { await supabase.from('organizations').insert([o]); refreshData(); },
-            updateOrganization: async (id, u) => { await supabase.from('organizations').update(u).eq('id', id); refreshData(); },
-            deleteOrganization: async (id) => { await supabase.from('organizations').delete().eq('id', id); refreshData(); },
-            updateProfileRole: async (id, r) => { await supabase.from('profiles').update({ role: r }).eq('id', id); refreshData(); },
-            deleteProfile: async (id) => { await supabase.from('profiles').delete().eq('id', id); refreshData(); },
-            getIcon, searchQuery, setSearchQuery, addToast, refreshData, getIconName, formatTimeAgo, workflowId, advanceWorkflow: () => setWorkflowId(w => Math.min(w + 1, 4))
-        }}>
+        <DashboardContext.Provider value={contextValue}>
             {children}
         </DashboardContext.Provider>
     );

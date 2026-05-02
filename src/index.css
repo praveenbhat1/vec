@@ -130,9 +130,9 @@
 .ml-sidebar-open { margin-left: 300px; }
 .left-sidebar-open { left: 300px; }
 
-.w-sidebar-closed { width: 80px; }
-.ml-sidebar-closed { margin-left: 80px; }
-.left-sidebar-closed { left: 80px; }
+.w-sidebar-closed { width: 90px; }
+.ml-sidebar-closed { margin-left: 90px; }
+.left-sidebar-closed { left: 90px; }
 
 @media (max-width: 1024px) {
   .w-sidebar-open { width: 100%; max-width: 320px; }
@@ -163,13 +163,33 @@
   will-change: transform;
 }
 
-/* Fluid Terminal Padding */
+/* ── Fluid Terminal Padding ── */
 .fluid-p {
-  padding: 1.5rem;
+  padding: 1rem;
 }
 @media (min-width: 768px) {
+  .fluid-p { padding: 1.5rem; }
+}
+@media (min-width: 1280px) {
   .fluid-p { padding: 2.5rem; }
 }
-@media (min-width: 1024px) {
-  .fluid-p { padding: 4rem; }
+
+/* ── Final Stabilization ── */
+.leaflet-container {
+  background: #08080A !important;
+  outline: none !important;
+}
+
+.leaflet-tile-pane {
+  filter: brightness(0.8) contrast(1.2);
+}
+
+.transform-gpu {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useDashboard } from '../context';
+import { getDefaultRoute } from '../lib/rbac';
 import { 
   Shield, 
   Mail, 
@@ -20,11 +21,12 @@ const LIVE_STATS_LABELS = [
   { label: 'TOTAL INCIDENTS', key: 'total', color: '#ef4444' },
   { label: 'ACTIVE ALERTS', key: 'active', color: '#00F0FF' },
   { label: 'UNITS DEPLOYED', key: 'contained', color: '#10b981' },
+  { label: 'TACTICAL LOAD', key: 'active', color: '#fbbf24', suffix: '%' },
 ];
 
 export default function LoginPage() {
   const nav = useNavigate();
-  const { login, loginAsGuest, user, stats } = useDashboard();
+  const { login, loginAsGuest, user, profile, stats = {}, addToast } = useDashboard();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -33,12 +35,13 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  // Navigate to dashboard once user is authenticated
+  // Navigate to the correct page once user is authenticated AND role is fetched
   useEffect(() => {
-    if (user) {
-      nav('/dashboard', { replace: true });
+    if (user && profile) {
+      const role = profile.role || 'user';
+      nav(getDefaultRoute(role), { replace: true });
     }
-  }, [user, nav]);
+  }, [user, profile, nav]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -65,25 +68,35 @@ export default function LoginPage() {
     }
   };
 
-  const displayStats = LIVE_STATS_LABELS.map(s => ({
-    label: s.label,
-    value: stats[s.key]?.toLocaleString() || '0',
-    color: s.color
-  }));
+  const displayStats = LIVE_STATS_LABELS.map(s => {
+    let val = stats[s.key] || 0;
+    if (s.label === 'TACTICAL LOAD') {
+      val = Math.round((stats.active / (stats.total || 1)) * 100) || 0;
+    }
+    return {
+      label: s.label,
+      value: `${val.toLocaleString()}${s.suffix || ''}`,
+      color: s.color
+    };
+  });
 
   return (
     <div className="min-h-screen bg-[#08080A] text-[#E5E5E7] font-inter overflow-y-auto flex selection:bg-[#00FFCC] selection:text-black">
       
       {/* ── AMBIENT MESH BACKGROUND ── */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        {/* Tactical Grid Overlay */}
+        <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px]" />
+        <div className="absolute inset-0 opacity-[0.02] bg-[linear-gradient(rgba(255,255,255,0.05)_2px,transparent_2px),linear-gradient(90deg,rgba(255,255,255,0.05)_2px,transparent_2px)] bg-[size:200px_200px]" />
+        
         <div 
           className="absolute w-[800px] h-[800px] rounded-full blur-[160px] opacity-[0.1] bg-blue-500 transition-transform duration-1000 ease-out"
           style={{ 
             transform: `translate(${mousePos.x - 400}px, ${mousePos.y - 400}px)`,
           }}
         />
-        <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] rounded-full blur-[140px] opacity-[0.1] bg-blue-600 animate-pulse" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[700px] h-[700px] rounded-full blur-[180px] opacity-[0.05] bg-red-900" />
+        <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] rounded-full blur-[140px] opacity-[0.12] bg-blue-600 animate-pulse" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[700px] h-[700px] rounded-full blur-[180px] opacity-[0.08] bg-red-900" />
         <div className="absolute inset-0 opacity-[0.03] contrast-150 brightness-150 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
       </div>
 
@@ -108,9 +121,12 @@ export default function LoginPage() {
             <div className="h-[1px] w-8 bg-[#00FFCC]/40" />
             <span className="text-[9px] font-mono tracking-[0.5em] text-[#00FFCC] uppercase">Auth_Session_Secure</span>
           </div>
-          <h1 className="font-outfit text-6xl font-black leading-[0.9] tracking-tighter mb-8 uppercase">
+          <h1 className="font-outfit text-7xl font-black leading-[0.85] tracking-tighter mb-8 uppercase relative">
             COMMAND<br />
-            <span className="bg-gradient-to-r from-[#00FFCC] via-white to-white/40 bg-clip-text text-transparent italic">CENTER_ACCESS</span>
+            <span className="bg-gradient-to-r from-[#00FFCC] via-white to-white/40 bg-clip-text text-transparent italic relative z-10">
+              CENTER_ACCESS
+              <span className="absolute -bottom-2 left-0 w-32 h-1 bg-red-600/40" />
+            </span>
           </h1>
           <p className="text-white/40 text-lg font-light leading-relaxed max-w-sm">
             Access the centralized crisis management dashboard to coordinate real-time response efforts.
@@ -208,33 +224,49 @@ export default function LoginPage() {
               <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full group relative overflow-hidden px-10 py-6 bg-[#00FFCC] border border-[#00FFCC]/20 hover:brightness-110 transition-all duration-300 disabled:opacity-50"
+                className="w-full group relative overflow-hidden px-10 py-6 bg-[#00FFCC] border border-[#00FFCC]/20 hover:brightness-110 transition-all duration-300 disabled:opacity-50 shadow-[0_0_30px_rgba(0,255,204,0.15)]"
               >
                 <div className="relative z-10 flex items-center justify-center gap-4">
                   <span className={`text-xl font-outfit font-black uppercase tracking-widest text-black`}>
-                    {loading ? 'AUTHENTICATING...' : 'ENTER COMMAND'}
+                    {loading ? 'VERIFYING_UPLINK...' : 'INITIATE COMMAND'}
                   </span>
                   {!loading && <ArrowRight className="w-6 h-6 text-black" />}
                 </div>
               </button>
               
-              <button 
-                type="button"
-                onClick={async () => {
-                  setLoading(true);
-                  try {
-                    await loginAsGuest();
-                  } catch (e) {
-                    setError('Access failed. Please try manual login.');
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-                disabled={loading}
-                className="w-full py-5 bg-white/5 border border-white/10 text-[#00FFCC] font-mono text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
-              >
-                SIGN UP
-              </button>
+              <div className="grid grid-cols-2 gap-4">
+                <button 
+                  type="button"
+                  onClick={async () => {
+                    setEmail('lak@gmail.com');
+                    setPassword('password');
+                    addToast('Mission credentials loaded', 'success');
+                  }}
+                  disabled={loading}
+                  className="py-5 bg-white/5 border border-white/10 text-white font-mono text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all flex items-center justify-center gap-3"
+                >
+                  <Terminal size={12} className="text-[#00FFCC]" />
+                  MISSION_DEMO
+                </button>
+                <button 
+                  type="button"
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      await loginAsGuest();
+                    } catch (e) {
+                      setError('Guest access failed. System locked.');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                  className="py-5 bg-white/5 border border-white/10 text-[#00FFCC] font-mono text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all flex items-center justify-center gap-3"
+                >
+                  <Globe size={12} />
+                  GUEST_ACCESS
+                </button>
+              </div>
             </div>
           </form>
 

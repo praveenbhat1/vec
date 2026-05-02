@@ -20,25 +20,20 @@ import {
   Terminal,
   Compass,
   CheckCircle,
-  HeartHandshake
+  HeartHandshake,
+  LogOut,
+  LayoutDashboard
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps';
+import { MapContainer, TileLayer, Marker as LeafletMarker, Popup } from 'react-leaflet';
+import * as L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import { useDashboard } from '../context';
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
-// Static fallback markers shown when no live incidents have coords
-const STATIC_INCIDENTS = [
-  { coords: [-74.006,  40.7128], type: 'CRITICAL',   label: 'Cyclone – Coastal Zone 4',      time: '2 min ago',  color: '#ef4444' },
-  { coords: [139.6917, 35.6895], type: 'DISPATCHED', label: 'Fire – Industrial Sector B',     time: '5 min ago',  color: '#3b82f6' },
-  { coords: [31.2357,  30.0444], type: 'LIVE',       label: 'Flood – River Valley',           time: '1 min ago',  color: '#ef4444' },
-  { coords: [-43.1729,-22.9068], type: 'CRITICAL',   label: 'Tectonic Alert – Sector G',      time: '12 min ago', color: '#ef4444' },
-  { coords: [77.2090,  28.6139], type: 'MONITORING', label: 'Heatwave – Central Hub',         time: 'Just now',   color: '#3b82f6' },
-  { coords: [74.8431,  12.8698], type: 'LIVE',       label: 'Fire – Mangaluru Port',          time: 'Just now',   color: '#f97316' },
-  { coords: [80.2707,  13.0827], type: 'DISPATCHED', label: 'Flood – Chennai Coast',          time: '8 min ago',  color: '#3b82f6' },
-  { coords: [72.8777,  19.0760], type: 'CRITICAL',   label: 'Cyclone – Mumbai Coastline',     time: '3 min ago',  color: '#ef4444' },
-];
 
 // --- SUB-COMPONENT FOR GLOBE TO PREVENT FULL PAGE RE-RENDERS ---
 const GlobeView = ({ hoveredMarker, setHoveredMarker, onEnter, onLeave }) => {
@@ -48,14 +43,13 @@ const GlobeView = ({ hoveredMarker, setHoveredMarker, onEnter, onLeave }) => {
   useEffect(() => {
     const isMobile = window.innerWidth < 1024;
     const rotateInterval = setInterval(() => {
-      setRotation(prev => (prev + (isMobile ? 0.3 : 0.5)) % 360);
-    }, isMobile ? 100 : 50);
+      setRotation(prev => (prev + (isMobile ? 0.3 : 0.6)) % 360);
+    }, 30);
     return () => clearInterval(rotateInterval);
   }, []);
 
-  // Use live incidents from DB if they have coords, else fall back to static markers
   const incidents = React.useMemo(() => {
-    const live = rawIncidents
+    return rawIncidents
       .map(inc => ({
         coords: [
           parseFloat(inc.longitude || inc.lng || 0),
@@ -69,8 +63,6 @@ const GlobeView = ({ hoveredMarker, setHoveredMarker, onEnter, onLeave }) => {
           : (inc.severity === 'medium' ? '#f97316' : '#3b82f6'),
       }))
       .filter(inc => inc.coords[0] !== 0 || inc.coords[1] !== 0);
-
-    return live.length > 0 ? live : STATIC_INCIDENTS;
   }, [rawIncidents]);
 
   return (
@@ -107,19 +99,32 @@ const GlobeView = ({ hoveredMarker, setHoveredMarker, onEnter, onLeave }) => {
             onMouseEnter={() => { onEnter(inc); }}
             onMouseLeave={() => { onLeave(); }}
           >
-            {/* Outer ping ring */}
-            <circle r={12} fill={inc.color} className="animate-ping" opacity={0.2} />
-            {/* Glowing dot */}
-            <circle 
-              r={hoveredMarker === inc ? 6 : 4}
-              fill={inc.color}
-              style={{ filter: `drop-shadow(0 0 8px ${inc.color})`, transition: 'r 0.3s' }}
-            />
+            <g className="cursor-pointer">
+              {/* Tactical Satellite Beam */}
+              <line x1="0" y1="0" x2="0" y2="-20" stroke={inc.color} strokeWidth={0.5} opacity={0.3} strokeDasharray="2 2" />
+              <circle r={2} fill={inc.color} opacity={0.5}>
+                <animate attributeName="r" values="2;6;2" dur="2s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.5;0;0.5" dur="2s" repeatCount="indefinite" />
+              </circle>
+              
+              <circle 
+                r={hoveredMarker === inc ? 7 : 4} 
+                fill={inc.color} 
+                stroke="#08080A" 
+                strokeWidth={1} 
+                className="transition-all duration-300"
+              />
+              
+              <circle r={10} fill={inc.color} opacity={0.2}>
+                <animate attributeName="r" values={hoveredMarker === inc ? "7;18;7" : "4;12;4"} dur="3s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.2;0;0.2" dur="3s" repeatCount="indefinite" />
+              </circle>
+            </g>
             {/* Inline SVG Tooltip on hover */}
             {hoveredMarker === inc && (
               <g className="pointer-events-none">
                 <rect x={10} y={-44} width={170} height={52} fill="rgba(0,0,0,0.85)" stroke={inc.color} strokeWidth={1} rx={3} />
-                <text x={20} y={-26} fill="white"    fontSize={10} fontWeight="bold"  fontFamily="Outfit">{inc.label.toUpperCase()}</text>
+                <text x={20} y={-26} fill="white"    fontSize={10} fontWeight="bold"  fontFamily="Outfit">{(inc.label || '').toUpperCase()}</text>
                 <text x={20} y={-12} fill={inc.color} fontSize={8}  fontWeight="black" fontFamily="JetBrains Mono">{inc.type} / {inc.time}</text>
               </g>
             )}
@@ -139,16 +144,209 @@ const GlobeView = ({ hoveredMarker, setHoveredMarker, onEnter, onLeave }) => {
     </div>
   );
 };
+// --- ANIMATED COUNTER COMPONENT ---
+const AnimatedCounter = ({ value, duration = 2000 }) => {
+  const [count, setCount] = useState(0);
+  
+  useEffect(() => {
+    let start = 0;
+    const end = parseInt(value.toString().replace(/,/g, '')) || 0;
+    if (start === end) return;
 
+    let timer = setInterval(() => {
+      start += Math.ceil(end / (duration / 50));
+      if (start >= end) {
+        setCount(end);
+        clearInterval(timer);
+      } else {
+        setCount(start);
+      }
+    }, 50);
+
+    return () => clearInterval(timer);
+  }, [value, duration]);
+
+  return <span>{count.toLocaleString()}</span>;
+};
+
+// --- LIVE INCIDENT TICKER COMPONENT ---
+const LiveIncidentTicker = ({ incidents }) => {
+  const displayIncidents = incidents.length > 0 ? incidents : STATIC_INCIDENTS;
+  
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[2000] w-full bg-red-600/10 border-b border-red-500/20 backdrop-blur-xl h-10 overflow-hidden flex items-center">
+      <div className="absolute left-0 top-0 bottom-0 bg-red-600 px-4 flex items-center z-10 shadow-[4px_0_15px_rgba(239,68,68,0.3)]">
+        <span className="font-mono text-[8px] font-black text-white tracking-[0.3em] uppercase">SYSTEM_FEED</span>
+      </div>
+      <div className="flex whitespace-nowrap animate-ticker pl-[100px]">
+        {displayIncidents.concat(displayIncidents).map((inc, i) => (
+          <div key={i} className="flex items-center gap-4 px-10 border-r border-white/5">
+            <span className="text-sm">🚨</span>
+            <span className="font-mono text-[10px] text-white uppercase tracking-widest">
+              {inc.type} - <span className="text-white font-black">{inc.location}</span> - <span className="text-red-500">{inc.time || 'JUST NOW'}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes ticker {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-ticker {
+          animation: ticker 40s linear infinite;
+        }
+      `}} />
+    </div>
+  );
+};
+
+// --- COMMAND CENTER MAP COMPONENT ---
+const CommandCenterMap = ({ incidents }) => {
+  const customMarkerIcon = (severity) => L.divIcon({
+    className: 'custom-pulsing-marker',
+    html: `<div class="marker-pulse" style="background: ${severity === 'high' || severity === 'critical' ? '#ef4444' : '#f59e0b'}"></div>
+           <div class="marker-core" style="background: ${severity === 'high' || severity === 'critical' ? '#ef4444' : '#f59e0b'}"></div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10]
+  });
+
+  const validIncidents = React.useMemo(() => {
+    const live = incidents.filter(inc => {
+      const lat = parseFloat(inc.latitude);
+      const lng = parseFloat(inc.longitude);
+      return !isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0);
+    });
+    
+    // If no live incidents, inject static India/Global markers for visual consistency
+    if (live.length === 0) {
+      return STATIC_INCIDENTS.map(s => ({
+        ...s,
+        latitude: s.lat,
+        longitude: s.lng,
+        location: s.label,
+        severity: s.type.toLowerCase()
+      }));
+    }
+    return live;
+  }, [incidents]);
+
+  return (
+    <div className="w-full h-[600px] bg-[#08080A] border-y border-white/5 relative group overflow-hidden">
+      <MapContainer 
+        center={[13.3409, 74.7421]} 
+        zoom={6} 
+        className="w-full h-full z-10"
+        scrollWheelZoom={false}
+      >
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; CARTO'
+        />
+        <MarkerClusterGroup
+          chunkedLoading
+          showCoverageOnHover={false}
+        >
+          {validIncidents.map((inc, i) => (
+            <LeafletMarker 
+              key={i} 
+              position={[parseFloat(inc.latitude), parseFloat(inc.longitude)]} 
+              icon={customMarkerIcon(inc.severity)}
+            >
+              <Popup className="tactical-popup">
+                <div className="p-3 bg-[#08080A] text-white border border-white/10 min-w-[200px]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: inc.severity === 'high' || inc.severity === 'critical' ? '#ef4444' : '#f59e0b' }} />
+                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">{inc.type}</span>
+                  </div>
+                  <div className="text-lg font-outfit font-black uppercase mb-3 leading-none">{inc.location}</div>
+                  <div className="space-y-2 pt-2 border-t border-white/5">
+                     <div className="flex justify-between text-[8px] font-mono tracking-widest">
+                        <span className="text-white/20 uppercase">THREAT_LEVEL</span>
+                        <span className="text-red-500">{inc.severity?.toUpperCase()}</span>
+                     </div>
+                     <div className="flex justify-between text-[8px] font-mono tracking-widest">
+                        <span className="text-white/20 uppercase">STATUS</span>
+                        <span className="text-[#00FFCC]">ACTIVE_DISPATCH</span>
+                     </div>
+                  </div>
+                </div>
+              </Popup>
+            </LeafletMarker>
+          ))}
+        </MarkerClusterGroup>
+      </MapContainer>
+      
+      {/* HUD OVERLAY */}
+      <div className="absolute top-8 left-8 z-[1000] p-8 bg-black/80 backdrop-blur-3xl border border-white/10 pointer-events-none hidden md:block">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_#ef4444]" />
+          <span className="text-[10px] font-mono text-white tracking-[0.4em] uppercase font-bold">COMMAND_CENTER_OS v5.4</span>
+        </div>
+        <div className="space-y-4">
+          <h3 className="text-4xl font-outfit font-black text-white italic tracking-tighter leading-none">LIVE_GEOSPATIAL<br />INTELLIGENCE</h3>
+          <div className="h-[1px] w-full bg-white/10" />
+          <div className="text-[10px] font-mono text-[#00FFCC] uppercase tracking-[0.2em] flex items-center gap-2">
+            <Activity className="w-3 h-3" /> Tracking {validIncidents.length} Active Emergency Nodes
+          </div>
+        </div>
+      </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .custom-pulsing-marker { position: relative; }
+        .marker-pulse {
+          position: absolute; width: 40px; height: 40px; left: -10px; top: -10px;
+          border-radius: 50%; opacity: 0.6; animation: marker-pulse-anim 2s infinite;
+        }
+        .marker-core {
+          position: absolute; width: 10px; height: 10px; left: 5px; top: 5px;
+          border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+        @keyframes marker-pulse-anim {
+          0% { transform: scale(0.2); opacity: 0.8; }
+          100% { transform: scale(1.5); opacity: 0; }
+        }
+        .leaflet-container { background: #08080A !important; }
+        .tactical-popup .leaflet-popup-content-wrapper {
+          background: #08080A !important;
+          border: 1px solid rgba(255,255,255,0.1) !important;
+          border-radius: 0 !important;
+          padding: 0 !important;
+          color: white !important;
+        }
+        .tactical-popup .leaflet-popup-tip { background: #08080A !important; }
+      `}} />
+    </div>
+  );
+};
 
 const LandingPage = () => {
-  const { incidents = [], organizations = [], resources = [] } = useDashboard();
+  const { incidents = [], stats = {}, organizations = [], resources = [], user, profile, logout } = useDashboard();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [hoveredMarker, setHoveredMarker] = useState(null);
   const [isZoomed, setIsZoomed] = useState(true);
   const hoverTimeoutRef = React.useRef(null);
+  const nav = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setMobileMenuOpen(false);
+      nav('/', { replace: true });
+    } catch (err) {
+      console.error("Logout failed:", err);
+      nav('/', { replace: true });
+    }
+  };
+
+  const heroStats = [
+    { label: 'Active Nodes', value: stats.total || 0, color: '#ef4444', icon: AlertTriangle },
+    { label: 'Units Active', value: stats.active || 0, color: '#3b82f6', icon: Shield },
+    { label: 'Response Avg', value: parseFloat(stats.responseTime) || 0, suffix: 'm', color: '#a855f7', icon: Clock },
+    { label: 'Tactical Load', value: Math.round((stats.active / (stats.total || 1)) * 100) || 0, suffix: '%', color: '#00FFCC', icon: Activity },
+  ];
 
   const handleMarkerEnter = (inc) => {
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
@@ -185,6 +383,7 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-[#08080A] text-[#E5E5E7] font-inter overflow-x-hidden selection:bg-[#00FFCC] selection:text-black">
+      <LiveIncidentTicker incidents={incidents} />
       
       {/* ── AMBIENT MESH BACKGROUND ── */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
@@ -231,16 +430,26 @@ const LandingPage = () => {
                  <div className="w-1 h-12 bg-red-500 scale-y-0 group-hover:scale-y-100 transition-transform origin-top" />
                  REPORT EMERGENCY
                </Link>
-                <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-outfit font-black uppercase tracking-tighter text-blue-400 flex items-center gap-6 group">
-                  <div className="w-12 h-1 bg-blue-500 scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
-                  LOGIN
-                </Link>
+                {user ? (
+                  <button 
+                    onClick={handleLogout}
+                    className="text-3xl font-outfit font-black uppercase tracking-tighter text-red-500 flex items-center gap-6 group"
+                  >
+                    <div className="w-1 h-12 bg-red-500 scale-y-0 group-hover:scale-y-100 transition-transform origin-top" />
+                    LOGOUT ({profile?.name?.split(' ')[0] || 'USER'})
+                  </button>
+                ) : (
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="text-3xl font-outfit font-black uppercase tracking-tighter text-blue-400 flex items-center gap-6 group">
+                    <div className="w-12 h-1 bg-blue-500 scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
+                    LOGIN
+                  </Link>
+                )}
            </div>
         </div>
       </div>
 
       {/* ── NAV BAR ── */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 ${scrolled ? 'bg-black/20 backdrop-blur-3xl border-b border-white/5 py-4' : 'bg-transparent py-8'}`}>
+      <nav className={`fixed top-10 left-0 right-0 z-50 transition-all duration-700 ${scrolled ? 'bg-black/20 backdrop-blur-3xl border-b border-white/5 py-3' : 'bg-transparent py-8'}`}>
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 flex items-center justify-between">
           <div onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-4 group cursor-pointer">
             <div className="w-10 h-10 bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-[#00FFCC]/40 transition-all duration-500">
@@ -255,7 +464,26 @@ const LandingPage = () => {
             <button onClick={() => scrollToSection('intel')} className="hover:text-[#00FFCC] transition-colors">MISSION</button>
             <button onClick={() => scrollToSection('nodes')} className="hover:text-[#00FFCC] transition-colors">COVERAGE</button>
             <Link to="/report" className="text-red-500 hover:text-red-400 transition-colors">REPORT EMERGENCY</Link>
-            <Link to="/login" className="px-6 py-2 border border-blue-500/30 bg-white/5 text-blue-400 hover:text-white transition-all uppercase">LOGIN</Link>
+            
+            {user ? (
+              <div className="flex items-center gap-8 pl-8 border-l border-white/10">
+                <Link to="/dashboard" className="text-white hover:text-[#00FFCC] transition-colors flex items-center gap-3">
+                  <div className="w-8 h-8 bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-black">
+                    {(profile?.name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                  </div>
+                  <span className="tracking-widest">{profile?.name || 'DASHBOARD'}</span>
+                </Link>
+                <button 
+                  onClick={handleLogout}
+                  className="p-2 text-white/20 hover:text-red-500 transition-colors"
+                  title="Logout"
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+            ) : (
+              <Link to="/login" className="px-6 py-2 border border-blue-500/30 bg-white/5 text-blue-400 hover:text-white transition-all uppercase">LOGIN</Link>
+            )}
           </div>
           <button className="lg:hidden w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10" onClick={() => setMobileMenuOpen(true)}>
             <Menu className="w-6 h-6 text-white" />
@@ -276,9 +504,29 @@ const LandingPage = () => {
               <span className="text-white/10 stroke-text outline-white/20">DISASTER</span> <br />
               <span className="bg-gradient-to-r from-[#00FFCC] via-white to-white/40 bg-clip-text text-transparent italic">COORDINATION</span>
             </h1>
-            <p className="text-white/60 text-lg md:text-xl font-light leading-relaxed max-w-xl mb-16 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <p className="text-white/60 text-lg md:text-xl font-light leading-relaxed max-w-xl mb-12 animate-fade-in" style={{ animationDelay: '0.2s' }}>
               Helping hospitals, fire teams, and responders work together in real-time when every second counts.
             </p>
+
+            {/* LIVE TACTICAL STATS */}
+            <div className="flex items-center gap-3 mb-6 animate-fade-in" style={{ animationDelay: '0.25s' }}>
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_#ef4444]" />
+              <span className="text-[10px] font-mono text-red-500 font-black tracking-[0.4em] uppercase">SYSTEM_LIVE_STATUS: ACTIVE</span>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-16 w-full max-w-3xl animate-fade-in" style={{ animationDelay: '0.3s' }}>
+              {heroStats.map((stat, i) => (
+                <div key={i} className="p-4 bg-white/5 border border-white/5 backdrop-blur-xl group hover:border-white/10 transition-all">
+                  <div className="flex items-center gap-2 mb-2">
+                    <stat.icon className="w-3 h-3" style={{ color: stat.color }} />
+                    <span className="text-[8px] font-mono text-white/40 uppercase tracking-widest">{stat.label}</span>
+                  </div>
+                  <div className="text-2xl font-outfit font-black text-white">
+                    <AnimatedCounter value={stat.value} />
+                    {stat.suffix && <span className="text-xs ml-1 opacity-40">{stat.suffix}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
             <div className="flex flex-col sm:flex-row gap-8 items-center animate-fade-in" style={{ animationDelay: '0.4s' }}>
                 <Link to="/report" className="relative group px-10 py-5 bg-red-600/10 border border-red-500/40 hover:bg-red-600/20 transition-all duration-500 flex items-center gap-4">
                   <AlertTriangle className="w-6 h-6 text-red-500 animate-pulse" />
@@ -287,13 +535,23 @@ const LandingPage = () => {
                     <span className="text-xl font-outfit font-black uppercase tracking-tight">🚨 Report Emergency</span>
                   </div>
                 </Link>
-                <Link to="/login" className="px-10 py-5 bg-blue-600/10 border border-blue-500/40 hover:bg-blue-600/20 transition-all duration-500 flex items-center gap-4">
-                  <Shield className="w-6 h-6 text-blue-500" />
-                  <div className="flex flex-col items-start text-left">
-                    <span className="text-[8px] font-mono text-white/60 uppercase">Responder Portal</span>
-                    <span className="text-xl font-outfit font-black uppercase tracking-tight text-blue-400">Login</span>
-                  </div>
-                </Link>
+                {user ? (
+                  <Link to="/dashboard" className="px-10 py-5 bg-[#00FFCC]/10 border border-[#00FFCC]/40 hover:bg-[#00FFCC]/20 transition-all duration-500 flex items-center gap-4 group">
+                    <LayoutDashboard className="w-6 h-6 text-[#00FFCC]" />
+                    <div className="flex flex-col items-start text-left">
+                      <span className="text-[8px] font-mono text-white/60 uppercase">Authenticated</span>
+                      <span className="text-xl font-outfit font-black uppercase tracking-tight text-[#00FFCC]">Access Dashboard</span>
+                    </div>
+                  </Link>
+                ) : (
+                  <Link to="/login" className="px-10 py-5 bg-blue-600/10 border border-blue-500/40 hover:bg-blue-600/20 transition-all duration-500 flex items-center gap-4">
+                    <Shield className="w-6 h-6 text-blue-500" />
+                    <div className="flex flex-col items-start text-left">
+                      <span className="text-[8px] font-mono text-white/60 uppercase">Responder Portal</span>
+                      <span className="text-xl font-outfit font-black uppercase tracking-tight text-blue-400">Login</span>
+                    </div>
+                  </Link>
+                )}
             </div>
           </div>
 
@@ -317,30 +575,12 @@ const LandingPage = () => {
                     </div>
                     <div className="flex justify-between items-end border-b border-white/5 pb-2">
                        <span className="text-[7px] lg:text-[8px] font-mono text-white/40">NODES</span>
-                       <span className="text-[10px] lg:text-xs font-outfit text-white">405 ACTIVE</span>
+                       <span className="text-[10px] lg:text-xs font-outfit text-white uppercase">{stats.total || 0} ACTIVE</span>
                     </div>
                   </div>
                </div>
 
-               {/* URGENT ALERTS Overlay */}
-               <div className="absolute bottom-5 right-5 lg:bottom-10 lg:right-10 p-4 lg:p-6 bg-black/40 border border-red-500/20 backdrop-blur-3xl z-40 max-w-[180px] lg:max-w-[240px] transition-all duration-700 opacity-100">
-                  <div className="text-[8px] lg:text-[10px] font-mono text-red-400 uppercase mb-4 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                    URGENT ALERTS
-                  </div>
-                  <div className="space-y-4 max-h-[120px] lg:max-h-[160px] overflow-y-auto pr-2">
-                    {[
-                      { time: '2 MIN AGO', label: 'CYCLONE – COASTAL ZONE 4', color: '#ef4444' },
-                      { time: '1 MIN AGO', label: 'FLOOD – RIVER VALLEY', color: '#ef4444' },
-                      { time: 'JUST NOW', label: 'FIRE – INDUSTRIAL SECTOR', color: '#f97316' },
-                    ].map((inc, i) => (
-                      <div key={i} className="group cursor-pointer hover:bg-white/5 p-2 transition-all">
-                        <div className="text-[8px] font-mono text-red-500 mb-1">{inc.time}</div>
-                        <div className="text-[10px] font-outfit font-bold text-white uppercase">{inc.label}</div>
-                      </div>
-                    ))}
-                  </div>
-               </div>
+                {/* URGENT ALERTS Overlay - Removed per request to clean UI */}
 
                <div 
                   className="relative cursor-crosshair transition-all duration-1000 ease-in-out scale-[2.0] lg:scale-[2.8]"
@@ -391,6 +631,34 @@ const LandingPage = () => {
               </div>
             )}
           </div>
+        </div>
+      </section>
+      
+      {/* ── COMMAND CENTER MAP ── */}
+      <section id="nodes" className="relative">
+        <CommandCenterMap incidents={incidents} />
+        
+        {/* Map Overlay Intelligence */}
+        <div className="absolute top-10 right-10 z-20 pointer-events-none hidden lg:block">
+           <div className="bg-[#08080A]/80 backdrop-blur-xl border border-white/10 p-6 space-y-4 max-w-[280px]">
+              <div className="flex items-center gap-3">
+                 <div className="w-2 h-2 bg-[#00FFCC] rounded-full animate-pulse" />
+                 <span className="font-mono text-[9px] text-white/40 uppercase tracking-[0.3em]">Geospatial_Intel_Feed</span>
+              </div>
+              <p className="font-mono text-[10px] text-white/60 leading-relaxed uppercase">
+                 Monitoring regional nodes. Real-time telemetry synchronized with satellite uplink.
+              </p>
+              <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
+                 <div className="flex justify-between items-center">
+                    <span className="text-[8px] font-mono text-white/20 uppercase">Nodes_Active</span>
+                    <span className="text-[10px] font-mono text-[#00FFCC] font-black">{incidents.length > 0 ? incidents.length : 7}</span>
+                 </div>
+                 <div className="flex justify-between items-center">
+                    <span className="text-[8px] font-mono text-white/20 uppercase">Satellite_Lock</span>
+                    <span className="text-[10px] font-mono text-blue-400 font-black">98.2%</span>
+                 </div>
+              </div>
+           </div>
         </div>
       </section>
 
@@ -627,12 +895,20 @@ const LandingPage = () => {
                Join the global network of responders and agencies coordinating the next generation of disaster assistance.
             </p>
             <div className="flex flex-col sm:flex-row gap-8 items-center">
-               <Link to="/register" className="px-12 py-6 bg-[#00FFCC] text-black font-outfit font-black text-xl uppercase tracking-tighter hover:bg-white transition-all duration-500 shadow-[0_0_50px_rgba(0,255,204,0.3)]">
-                 Initialize Access
-               </Link>
-               <Link to="/login" className="px-12 py-6 border border-white/10 hover:bg-white/5 text-white font-outfit font-black text-xl uppercase tracking-tighter transition-all">
-                 Command Login
-               </Link>
+                {useDashboard().user ? (
+                  <Link to="/dashboard" className="px-12 py-6 bg-[#00FFCC] text-black font-outfit font-black text-xl uppercase tracking-tighter hover:bg-white transition-all duration-500 shadow-[0_0_50px_rgba(0,255,204,0.3)]">
+                    Enter Dashboard
+                  </Link>
+                ) : (
+                  <>
+                    <Link to="/register" className="px-12 py-6 bg-[#00FFCC] text-black font-outfit font-black text-xl uppercase tracking-tighter hover:bg-white transition-all duration-500 shadow-[0_0_50px_rgba(0,255,204,0.3)]">
+                      Initialize Access
+                    </Link>
+                    <Link to="/login" className="px-12 py-6 border border-white/10 hover:bg-white/5 text-white font-outfit font-black text-xl uppercase tracking-tighter transition-all">
+                      Command Login
+                    </Link>
+                  </>
+                )}
             </div>
          </div>
       </section>

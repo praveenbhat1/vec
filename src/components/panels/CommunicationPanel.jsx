@@ -1,79 +1,73 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useDashboard } from '../../context';
 import { MessageSquare, AlertTriangle, Radio, Send, Terminal, Shield, Lock } from 'lucide-react';
 
 export default function CommunicationPanel() {
-    const { messages, addMessage } = useDashboard();
+    const { messages, actions, addMessage, user } = useDashboard();
     const [input, setInput] = useState('');
-    const [filter, setFilter] = useState('All');
 
-    const filtered = filter === 'All' ? messages : messages.filter(m => m.status === filter);
+    const combinedStream = useMemo(() => {
+      const msgs = messages.map(m => ({ ...m, type: 'chat' }));
+      const logs = (actions || []).map(a => ({
+        id: a.id,
+        sender: 'SYSTEM',
+        text: a.details,
+        time: new Date(a.created_at).toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' }),
+        type: 'log',
+        timestamp: new Date(a.created_at).getTime()
+      }));
+      
+      return [...msgs, ...logs].sort((a, b) => b.timestamp - a.timestamp);
+    }, [messages, actions]);
 
     const handleSend = (e) => {
         e.preventDefault();
-        if (input.trim()) { addMessage('Alex', input.trim(), 'Active'); setInput(''); }
+        if (input.trim()) { addMessage(user?.name || 'OPERATOR', input.trim(), 'Active'); setInput(''); }
     };
 
     return (
         <div className="flex flex-col h-full w-full bg-[#0A0A0B]/20 relative overflow-hidden backdrop-blur-3xl group">
             
             {/* Secur-Link Header */}
-            <div className="flex items-center justify-between px-10 py-8 border-b border-white/5 bg-white/[0.02]">
+            <div className="flex items-center justify-between px-8 py-6 border-b border-white/5 bg-white/[0.02]">
                 <div className="flex items-center gap-6">
                     <div className="w-10 h-10 border border-emerald-500/20 bg-emerald-500/5 flex items-center justify-center relative">
                         <Radio className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform animate-pulse" />
                         <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_#10b981]" />
                     </div>
                     <div>
-                        <h4 className="font-outfit font-black text-xl tracking-tight text-white uppercase leading-none mb-1">TEAM CHAT</h4>
+                        <h4 className="font-outfit font-black text-xl tracking-tight text-white uppercase leading-none mb-1">COMMAND_STREAM</h4>
                         <p className="font-mono text-[9px] font-bold tracking-[0.2em] text-white/30 uppercase flex items-center gap-2">
-                           <Lock className="w-3 h-3" /> SECURE CHANNEL
+                           <Lock className="w-3 h-3" /> SECURE_AUDIT_LOG
                         </p>
                     </div>
-                </div>
-                
-                <div className="flex gap-1 p-1 bg-black/40 border border-white/5">
-                    {['All','Critical'].map(f => (
-                        <button key={f} onClick={() => setFilter(f)}
-                                className={`font-mono px-4 py-2 text-[10px] font-black tracking-widest uppercase transition-all
-                                    ${filter === f ? 'bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.05)]' : 'text-white/20 hover:text-white/40'}`}>
-                            {f}
-                        </button>
-                    ))}
                 </div>
             </div>
 
             {/* Message Stream */}
             <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-white/[0.03]">
-                {filtered.length === 0 && (
+                {combinedStream.length === 0 && (
                     <div className="flex flex-col items-center justify-center h-full gap-6 opacity-10">
                         <Terminal className="w-12 h-12" />
-                        <span className="font-mono text-[10px] font-black tracking-[0.5em] uppercase">NO MESSAGES</span>
+                        <span className="font-mono text-[10px] font-black tracking-[0.5em] uppercase">NO TELEMETRY</span>
                     </div>
                 )}
-                {filtered.map(msg => (
-                    <div key={msg.id} className="group/msg px-10 py-8 hover:bg-white/[0.02] transition-colors relative">
-                        <div className="flex items-start justify-between gap-6 mb-4">
+                {combinedStream.map(msg => (
+                    <div key={`${msg.type}-${msg.id}`} className={`group/msg px-8 py-5 hover:bg-white/[0.02] transition-colors relative ${msg.type === 'log' ? 'bg-blue-500/[0.01]' : ''}`}>
+                        <div className="flex items-start justify-between gap-6 mb-2">
                             <div className="flex items-center gap-4">
-                               <div className={`w-1 h-6 ${msg.sender === 'Alex' ? 'bg-purple-500' : 'bg-blue-500'}`} />
-                               <span className={`font-outfit font-black text-sm tracking-tight uppercase transition-all group-hover/msg:translate-x-1
-                                   ${msg.sender === 'Alex' ? 'text-purple-400' : 'text-blue-400'}`}>
+                               <div className={`w-1 h-4 ${msg.type === 'log' ? 'bg-[#00FFCC]' : msg.sender === 'SYSTEM' ? 'bg-red-500' : 'bg-purple-500'}`} />
+                               <span className={`font-mono text-[10px] font-black tracking-widest uppercase transition-all
+                                   ${msg.type === 'log' ? 'text-[#00FFCC]/60' : msg.sender === 'SYSTEM' ? 'text-red-400' : 'text-purple-400'}`}>
                                    {msg.sender}
                                </span>
+                               {msg.type === 'log' && <span className="text-[7px] font-mono text-white/10 tracking-[0.3em] font-black">AUDIT_LOG</span>}
                             </div>
                             <span className="font-mono text-[9px] text-white/10 tracking-widest font-bold uppercase transition-transform group-hover/msg:translate-x-2">[{msg.time}]</span>
                         </div>
-                        <p className="font-inter text-[11px] text-white/40 leading-relaxed mb-6 uppercase italic tracking-[0.02em]">{msg.text}</p>
-                        
-                        <div className="flex justify-end items-center gap-4">
-                            <div className="h-[1px] flex-1 bg-white/[0.03]" />
-                            <span className={`
-                                font-mono text-[8px] font-black tracking-widest uppercase px-3 py-1 border
-                                ${msg.status === 'Critical' ? 'bg-red-500/5 text-red-500 border-red-500/20' : 'bg-white/5 text-white/20 border-white/5'}
-                            `}>
-                                {msg.status}
-                            </span>
-                        </div>
+                        <p className={`font-mono text-[10px] leading-relaxed uppercase tracking-tight ${msg.type === 'log' ? 'text-white/20 italic' : 'text-white/60 font-bold'}`}>
+                           {msg.text}
+                        </p>
                     </div>
                 ))}
             </div>

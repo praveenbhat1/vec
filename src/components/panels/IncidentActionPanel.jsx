@@ -52,6 +52,9 @@ export default function IncidentActionPanel() {
                                      </span>
                                      <span className="font-mono text-[9px] text-white/20 tracking-widest font-bold uppercase transition-transform group-hover/action:translate-x-2">SOURCE: {act.source}</span>
                                   </div>
+                                  <p className="mt-3 text-[11px] font-mono text-white/50 leading-relaxed max-w-[90%]">
+                                     {act.details}
+                                  </p>
                                </div>
                             </div>
                             <span className="font-mono text-[10px] text-white/20 tracking-widest font-bold uppercase">[{act.time}]</span>

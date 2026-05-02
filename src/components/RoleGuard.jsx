@@ -17,12 +17,18 @@ import { ShieldOff, ArrowLeft, Lock } from 'lucide-react';
 export function RoleGuard({ path, children }) {
   const { user, profile, loading } = useDashboard();
 
-  // While loading, allow the layout to render (don't block)
-  if (loading) return children;
+  // While loading auth/profile, show a spinner — NEVER flash the protected content
+  if (loading) {
+    return (
+      <div className="h-screen w-screen bg-[#08080A] flex flex-col items-center justify-center gap-4">
+        <div className="w-12 h-12 border-t-2 border-[#00FFCC] rounded-full animate-spin" />
+        <span className="font-mono text-[9px] text-[#00FFCC] animate-pulse uppercase tracking-[0.4em]">VERIFYING_ACCESS...</span>
+      </div>
+    );
+  }
 
   // Not authenticated → login
   if (!user) {
-    console.log(`RoleGuard: No session. Redirecting to /login from ${path}`);
     return <Navigate to="/login" replace />;
   }
 
@@ -31,7 +37,6 @@ export function RoleGuard({ path, children }) {
 
   // Check route access
   if (!canAccessRoute(role, path)) {
-    console.log(`RoleGuard: Role '${role}' denied access to ${path}, redirecting to home.`);
     return <Navigate to="/" replace />;
   }
 
@@ -45,7 +50,17 @@ export function RoleGuard({ path, children }) {
 export function ProtectedRoute({ children }) {
   const { user, loading } = useDashboard();
 
-  if (!loading && !user) {
+  // Show spinner while checking auth — never flash content
+  if (loading) {
+    return (
+      <div className="h-screen w-screen bg-[#08080A] flex flex-col items-center justify-center gap-4">
+        <div className="w-12 h-12 border-t-2 border-[#00FFCC] rounded-full animate-spin" />
+        <span className="font-mono text-[9px] text-[#00FFCC] animate-pulse uppercase tracking-[0.4em]">AUTHENTICATING...</span>
+      </div>
+    );
+  }
+
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 

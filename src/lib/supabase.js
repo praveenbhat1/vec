@@ -323,22 +323,51 @@ export async function subscribeToActivityLogs(callback) {
 // SEEDING (AUTO-FILL IF EMPTY)
 // ============================================
 export async function seedDatabaseIfEmpty() {
-  console.log("Supabase: [SEED] Checking database status...");
+  console.log("Supabase: [SEED] Initiating Massive Tactical Seeding...");
   try {
     // 1. Check Incidents
     const { count: incCount, error: incErr } = await supabase
       .from('incidents')
       .select('*', { count: 'exact', head: true });
       
-    if (!incErr && incCount === 0) {
-      console.log("Supabase: [SEED] Incidents table empty. Seeding mock data...");
-      await supabase.from('incidents').insert([
-        { type: "fire", location: "Udupi Main Road", latitude: 13.3409, longitude: 74.7421, severity: "high", status: "ACTIVE", description: "Large structure fire near the main intersection." },
-        { type: "accident", location: "NH66 Highway", latitude: 13.3315, longitude: 74.7460, severity: "medium", status: "REPORTED", description: "Multi-vehicle collision on NH66." },
-        { type: "flood", location: "Malpe Beach", latitude: 13.3490, longitude: 74.6900, severity: "low", status: "ACTIVE", description: "Tidal surge causing minor flooding." },
-        { type: "medical", location: "Manipal Hospital", latitude: 13.3522, longitude: 74.7928, severity: "high", status: "ACTIVE", description: "Emergency department at peak capacity." },
-        { type: "wildfire", location: "Kalsanka Woods", latitude: 13.3500, longitude: 74.7600, severity: "critical", status: "ACTIVE", description: "Rapidly spreading forest fire in Kalsanka region." }
-      ]);
+    if (!incErr) {
+      const currentCount = incCount || 0;
+      if (currentCount < 72) {
+        console.log(`Supabase: [SEED] Grid at ${currentCount}/72. Scaling up...`);
+        const types = ['fire', 'flood', 'medical', 'accident', 'wildfire', 'cyclone', 'earthquake'];
+        const severities = ['low', 'medium', 'high', 'critical'];
+        
+        const remaining = 72 - currentCount;
+        const batch = [];
+        
+        for (let i = 0; i < remaining; i++) {
+          const type = types[Math.floor(Math.random() * types.length)];
+          const lat = 13.34 + (Math.random() - 0.5) * 0.15;
+          const lng = 74.74 + (Math.random() - 0.5) * 0.15;
+          
+          batch.push({
+            type,
+            location: `Sector ${Math.floor(Math.random() * 99) + 100}`,
+            latitude: lat,
+            longitude: lng,
+            severity: severities[Math.floor(Math.random() * severities.length)],
+            status: Math.random() > 0.3 ? 'ACTIVE' : 'REPORTED',
+            description: `Tactical node ${i} reporting abnormal activity. Integrity check recommended.`,
+            reporter_name: `Automated Sentry ${Math.floor(Math.random() * 999)}`,
+            created_at: new Date(Date.now() - Math.random() * 3600000).toISOString()
+          });
+        }
+        
+        // Insert in one large batch
+        const { error: batchErr } = await supabase.from('incidents').insert(batch);
+        if (batchErr) {
+           console.error("Supabase: [SEED] Batch insertion failed. Using individual fallback...", batchErr.message);
+           for (const item of batch) {
+             await supabase.from('incidents').insert(item);
+           }
+        }
+        console.log(`Supabase: [SEED] Tactical Grid Successfully Provisioned to 72 Units.`);
+      }
     }
 
     // 2. Check Resources
@@ -346,8 +375,8 @@ export async function seedDatabaseIfEmpty() {
       .from('resources')
       .select('*', { count: 'exact', head: true });
 
-    if (!resErr && resCount === 0) {
-      console.log("Supabase: [SEED] Resources table empty. Seeding mock data...");
+    if (!resErr && resCount < 20) {
+      console.log("Supabase: [SEED] Provisioning additional resources...");
       const seedResources = [
           { name: 'Medical Kits (Advanced)', type: 'medical_kit', category: 'supply', total: 120, available: 85, location: 'Central Hub', status: 'available' },
           { name: 'Ambulance Unit Alpha', type: 'ambulance', category: 'vehicle', total: 10, available: 4, location: 'Sector 4', status: 'low' },
@@ -359,59 +388,31 @@ export async function seedDatabaseIfEmpty() {
       await supabase.from('resources').insert(seedResources);
     }
 
-    // 3. Check Organizations
-    const { count: orgCount, error: orgErr } = await supabase
-      .from('organizations')
+    // 4. Check Activity Logs (Action Queue)
+    const { count: logCount, error: logErr } = await supabase
+      .from('activity_logs')
       .select('*', { count: 'exact', head: true });
     
-    if (!orgErr && orgCount === 0) {
-      console.log("Supabase: [SEED] Organizations table empty. Seeding...");
-      await supabase.from('organizations').insert([
-        { name: 'City General Hospital', type: 'hospital', location: 'Downtown', contact: '+1-555-0123', status: 'Active' },
-        { name: 'Western Fire Dept', type: 'fire_dept', location: 'Industrial Sector', contact: '+1-555-0199', status: 'Active' },
-        { name: 'Red Cross Alpha', type: 'ngo', location: 'Suburban East', contact: '+1-555-0144', status: 'Inactive' },
-        { name: 'Emergency Medics Unit', type: 'hospital', location: 'North Point', contact: '+1-555-0188', status: 'Active' },
-        { name: 'National Guard Sector 7', type: 'ngo', location: 'Fort Ridge', contact: '+1-555-9000', status: 'Active' },
-        { name: 'Coast Guard Unit B', type: 'fire_dept', location: 'Harbor Base', contact: '+1-555-8822', status: 'Active' },
-        { name: 'Volunteers Without Borders', type: 'ngo', location: 'Global Relief Hub', contact: '+1-555-7766', status: 'Active' }
-      ]);
+    if (!logErr && (logCount || 0) < 10) {
+      console.log("Supabase: [SEED] Filling Action Queue...");
+      const mockActions = [
+        { action_type: 'UNIT_DEPLOYMENT', details: 'Air Ambulance 02 dispatched to Sector 142. [PRIORITY:High] [SOURCE:HQ_COMMAND]', created_at: new Date(Date.now() - 300000).toISOString() },
+        { action_type: 'RECON_UPLINK', details: 'Drone Recon established over Central Hub. [PRIORITY:Medium] [SOURCE:SATELLITE_LINK]', created_at: new Date(Date.now() - 900000).toISOString() },
+        { action_type: 'AGENCY_SYNC', details: 'City Hospital synced with Fire Dept Alpha. [PRIORITY:Low] [SOURCE:NET_SYNC]', created_at: new Date(Date.now() - 1800000).toISOString() },
+        { action_type: 'GRID_OPTIMIZE', details: 'AI Routing optimized for Sector 4 congestion. [PRIORITY:Medium] [SOURCE:AI_CORE]', created_at: new Date(Date.now() - 2700000).toISOString() },
+        { action_type: 'RESOURCE_ALLOC', details: 'Medical kits (Tier 2) moved to Forward Base. [PRIORITY:High] [SOURCE:LOGISTICS]', created_at: new Date(Date.now() - 3600000).toISOString() },
+        { action_type: 'SYSTEM_AUDIT', details: 'Core integrity check complete. Zero drift. [PRIORITY:Low] [SOURCE:SYSTEM]', created_at: new Date(Date.now() - 5400000).toISOString() },
+        { action_type: 'RESPONDER_LINK', details: 'Police Unit 105 linked to Objective 72. [PRIORITY:High] [SOURCE:FIELD_OPS]', created_at: new Date(Date.now() - 7200000).toISOString() },
+        { action_type: 'HEARTBEAT_SYNC', details: 'Satellite Uplink 04 re-established. [PRIORITY:Medium] [SOURCE:COMM_HUB]', created_at: new Date(Date.now() - 9000000).toISOString() },
+        { action_type: 'EVAC_ORDER', details: 'Evacuation order issued for Sector 21 due to flood risk. [PRIORITY:Critical] [SOURCE:LOCAL_AUTHORITY]', created_at: new Date(Date.now() - 600000).toISOString() },
+        { action_type: 'AMBULANCE_DISPATCH', details: 'Unit 404 (Ambulance) responding to cardiac arrest in Sector 5. [PRIORITY:High] [SOURCE:DISPATCH_911]', created_at: new Date(Date.now() - 1200000).toISOString() },
+        { action_type: 'FIRE_SUPPRESSION', details: 'Water tanker dispatched to contain structural fire. [PRIORITY:High] [SOURCE:FIRE_DEPT]', created_at: new Date(Date.now() - 2400000).toISOString() },
+        { action_type: 'SUPPLY_AIRDROP', details: 'Food and water packages dropped in isolated North Sector. [PRIORITY:Medium] [SOURCE:LOGISTICS_AIR]', created_at: new Date(Date.now() - 4800000).toISOString() }
+      ];
+      await supabase.from('activity_logs').insert(mockActions);
     }
 
-    // 3.5 Check Profiles
-    const { count: profCount, error: profErr } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true });
-    
-    if (!profErr && profCount === 0) {
-      console.log("Supabase: [SEED] Profiles table empty. Seeding...");
-      // Using deterministic UUIDs for mock profiles (V4 format)
-      await supabase.from('profiles').insert([
-        { id: '00000000-0000-4000-a000-000000000001', name: 'Commander Alex', role: 'admin', organization: 'Crisis HQ' },
-        { id: '00000000-0000-4000-a000-000000000002', name: 'Major Sarah', role: 'responder', organization: 'Western Fire Dept' },
-        { id: '00000000-0000-4000-a000-000000000003', name: 'Officer James', role: 'responder', organization: 'City General Hospital' },
-        { id: '00000000-0000-4000-a000-000000000004', name: 'Tech Elena', role: 'admin', organization: 'IT Hub' },
-        { id: '00000000-0000-4000-a000-000000000005', name: 'Dr. Michael Chen', role: 'responder', organization: 'City General Hospital' },
-        { id: '00000000-0000-4000-a000-000000000006', name: 'Captain Ramirez', role: 'admin', organization: 'Coast Guard Unit B' },
-        { id: '00000000-0000-4000-a000-000000000007', name: 'Dispatcher Kelly', role: 'responder', organization: 'Western Fire Dept' },
-        { id: '00000000-0000-4000-a000-000000000008', name: 'Logistics Sam', role: 'responder', organization: 'Red Cross Alpha' }
-      ]);
-    }
-
-    // 4. Check Messages
-    const { count: msgCount, error: msgErr } = await supabase
-      .from('messages')
-      .select('*', { count: 'exact', head: true });
-    
-    if (!msgErr && msgCount === 0) {
-      console.log("Supabase: [SEED] Messages table empty. Seeding...");
-      await supabase.from('messages').insert([
-        { sender: 'COMMANDER ALEX', text: 'Aether Grid stabilized. Monitoring all sectors.' },
-        { sender: 'MAJOR SARAH', text: 'Ambulance 04 en route to NH66.' },
-        { sender: 'OFFICER JAMES', text: 'All units stay on standby for weather update.' }
-      ]);
-    }
-
-    console.log("Supabase: [SEED] Database check/seed complete.");
+    console.log("Supabase: [SEED] Massive Database Seeding Complete.");
   } catch (err) {
     console.error("Supabase: [SEED] Critical Error:", err);
   }
