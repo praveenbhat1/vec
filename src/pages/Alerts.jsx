@@ -194,7 +194,7 @@ function AlertsContent() {
     };
 
     return (
-        <div className="flex h-screen w-full overflow-hidden bg-[#08080A] text-[#E5E5E7]">
+        <div className="flex h-screen bg-[#08080A] font-inter selection:bg-[#00FFCC] selection:text-black overflow-hidden relative">
             
             {/* ── BACKGROUND ── */}
             <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
@@ -206,14 +206,15 @@ function AlertsContent() {
             </div>
 
             <Sidebar />
-            <TopNavbar />
+            
+            <div className="flex-1 flex flex-col min-w-0 relative">
+                <TopNavbar />
 
-            <main
-                className={`flex-1 overflow-hidden flex flex-col transition-all duration-300 relative z-10 ${isSidebarOpen ? 'ml-sidebar-open' : 'ml-sidebar-closed'}`}
-                style={{ marginTop: 80, height: 'calc(100vh - 80px)' }}
-            >
-                {/* ── COMMAND HEADER ── */}
-                <div className="px-10 py-8 border-b border-white/5 flex items-center justify-between bg-[#0A0C11]">
+                <main
+                    className="flex-1 overflow-hidden flex flex-col relative z-10"
+                >
+                    {/* ── COMMAND HEADER ── */}
+                    <div className="px-10 py-8 border-b border-white/5 flex items-center justify-between bg-[#0A0C11]">
                     <div className="flex items-center gap-8">
                         <div className="flex flex-col">
                             <div className="flex items-center gap-2 mb-1">
@@ -439,6 +440,7 @@ function AlertsContent() {
 
                 </div>
             </main>
+            </div>
 
             <style dangerouslySetInnerHTML={{ __html: `
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }

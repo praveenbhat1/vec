@@ -113,7 +113,7 @@ export function DashboardProvider({ children }) {
 
     const [toasts, setToasts] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [actions, setActions] = useState([]);
     const [messages, setMessages] = useState([]);
@@ -263,7 +263,8 @@ export function DashboardProvider({ children }) {
                 supabase.from('organizations').select('*').order('name').then(r => r.data || []),
                 supabase.from('messages').select('*').order('created_at', { ascending: false }).limit(20).then(r => r.data || []),
                 supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(20).then(r => r.data || []),
-                supabase.from('profiles').select('*').order('name').then(r => r.data || [])
+                supabase.from('profiles').select('*').order('name').then(r => r.data || []),
+                supabase.from('tactical_actions').select('*').eq('status', 'pending').order('created_at', { ascending: true }).then(r => r.data || [])
             ]);
 
             const incData = results[0].status === 'fulfilled' ? results[0].value : [];
@@ -272,27 +273,20 @@ export function DashboardProvider({ children }) {
             const msgData = results[3].status === 'fulfilled' ? results[3].value : [];
             const logData = results[4].status === 'fulfilled' ? results[4].value : [];
             const profData = results[5].status === 'fulfilled' ? results[5].value : [];
+            const tactData = results[6].status === 'fulfilled' ? results[6].value : [];
             
             const mappedIncs = incData.map(mapIncidentToAlert);
             setIncidents(mappedIncs);
             setResources(resData);
             setOrganizations(orgData);
             setProfiles(profData);
-            const mappedActions = logData.map(log => {
-                const priorityMatch = log.details.match(/\[PRIORITY:(.*?)\]/);
-                const sourceMatch = log.details.match(/\[SOURCE:(.*?)\]/);
-                const cleanDetails = log.details.replace(/\[PRIORITY:.*?\]/g, '').replace(/\[SOURCE:.*?\]/g, '').trim();
-                
-                return {
-                    id: log.id,
-                    title: log.action_type.replace(/_/g, ' '),
-                    details: cleanDetails,
-                    priority: priorityMatch ? priorityMatch[1] : 'Medium',
-                    source: sourceMatch ? sourceMatch[1] : 'SYSTEM',
-                    time: formatTimeAgo(log.created_at),
-                    created_at: log.created_at
-                };
-            });
+            
+            // Use tactical_actions table for the primary Action Queue
+            const mappedActions = tactData.map(act => ({
+                ...act,
+                time: act.time || formatTimeAgo(act.created_at)
+            }));
+            
             setActions(mappedActions);
             setStats(calculateStatsFromIncidents(mappedIncs));
             setMessages(msgData.map(m => {
@@ -721,8 +715,20 @@ export function DashboardProvider({ children }) {
         },
         autoResponseMode, setAutoResponseMode,
         allocateResource,
-        acknowledgeAction: async (id) => { addToast('Action Acknowledged', 'success'); },
-        escalateAction: async (id) => { addToast('Protocol C4 Escalated', 'warning'); }
+        acknowledgeAction: async (id) => { 
+            try {
+                await supabase.from('tactical_actions').update({ status: 'acknowledged' }).eq('id', id);
+                setActions(prev => prev.filter(a => a.id !== id));
+                addToast('Action Acknowledged', 'success'); 
+            } catch (err) { addToast('Update Failed', 'error'); }
+        },
+        escalateAction: async (id) => { 
+            try {
+                await supabase.from('tactical_actions').update({ status: 'escalated' }).eq('id', id);
+                setActions(prev => prev.filter(a => a.id !== id));
+                addToast('Protocol C4 Escalated', 'warning'); 
+            } catch (err) { addToast('Escalation Failed', 'error'); }
+        }
     }), [
         user, profile, loading, incidents, actions, messages, resources, stats, organizations, profiles, toasts,
         isSidebarOpen, isMobileMenuOpen, searchQuery, workflowId, selectedIncidentId, responders, recommendations, autoResponseMode,

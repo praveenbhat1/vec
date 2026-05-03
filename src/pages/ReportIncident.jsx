@@ -350,7 +350,8 @@ export default function ReportIncident() {
   );
 
   return (
-    <div className="min-h-screen bg-[#08080A] text-[#E5E5E7] font-inter selection:bg-[#ef4444] selection:text-white">
+    <div className="flex h-screen bg-[#08080A] font-inter selection:bg-[#ef4444] selection:text-white overflow-hidden relative">
+      <Sidebar />
       
       {/* ── AMBIENT MESH BACKGROUND ── */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
@@ -362,12 +363,11 @@ export default function ReportIncident() {
         <div className="absolute inset-0 opacity-[0.03] contrast-150 brightness-150 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
       </div>
 
-      {/* ── TACTICAL NAV ── */}
-      <TopNavbar />
-      {userRole !== 'victim' && <Sidebar />}
+      <div className="flex-1 flex flex-col min-w-0 relative">
+        <TopNavbar />
 
-      <main className={`relative z-10 pt-32 pb-40 px-8 transition-all duration-300 ${isSidebarOpen ? 'ml-sidebar-open' : ''}`}>
-        <div className="max-w-[1000px] mx-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto relative z-10 pt-32 pb-40 px-8 custom-scrollbar">
+          <div className="max-w-[1000px] mx-auto">
           
           <div className="mb-20 text-center">
              <span className="text-[10px] font-mono text-red-500 tracking-[0.8em] uppercase block mb-6 animate-pulse">Emergency Report Mode</span>
@@ -558,6 +558,7 @@ export default function ReportIncident() {
             background: #08080A !important;
         }
       `}} />
+      </div>
     </div>
   );
 }

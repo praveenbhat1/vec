@@ -13,8 +13,8 @@ const H_TOP    = 80;
 
 const NAV = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-    { id: 'alerts',    icon: AlertTriangle,   label: 'Emergency Alerts',    path: '/alerts' },
-    { id: 'resources', icon: Database,         label: 'Resources', path: '/resources' },
+    { id: 'alerts',    icon: AlertTriangle,   label: 'Emergency Alerts',    path: '/alerts', badge: 12 },
+    { id: 'resources', icon: Database,         label: 'Resources', path: '/resources', badge: 'ACTIVE' },
     { id: 'analytics', icon: Activity,         label: 'Analytics',  path: '/analytics' },
     { id: 'settings',  icon: Settings,         label: 'Settings',     path: '/settings' },
 ];
@@ -22,7 +22,7 @@ const NAV = [
 export default function Sidebar() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { isSidebarOpen, toggleSidebar, addToast, profile, user, logout, userRole } = useDashboard();
+    const { isSidebarOpen, toggleSidebar, addToast, profile, user, logout, userRole, incidents, actions } = useDashboard();
     const w = isSidebarOpen ? W_OPEN : W_CLOSED;
     const filteredNav = filterNavByRole(NAV, userRole);
     const roleColor = getRoleColor(userRole);
@@ -80,8 +80,9 @@ export default function Sidebar() {
 
             {/* ── NAVIGATION BLADE ── */}
             <nav className="flex-1 py-16 px-5 space-y-6">
-                {filteredNav.map(({ id, icon: Icon, label, path }) => {
+                {filteredNav.map(({ id, icon: Icon, label, path, badge: staticBadge }) => {
                     const isActive = location.pathname === path;
+                    const badge = id === 'alerts' ? incidents.length : (id === 'dashboard' ? actions.length : staticBadge);
                     return (
                         <button
                             key={id}
@@ -105,6 +106,11 @@ export default function Sidebar() {
                                 <span className={`text-[11px] font-mono font-black tracking-[0.4em] uppercase whitespace-nowrap ${isActive ? 'text-white' : 'text-white/10 group-hover:text-white/30'}`}>
                                     {label}
                                 </span>
+                                {badge && isSidebarOpen && (
+                                    <span className="ml-2 px-2 py-0.5 bg-red-600 text-white text-[8px] font-black font-mono rounded-sm animate-pulse">
+                                        {badge}
+                                    </span>
+                                )}
                                 {isActive && (
                                     <div className="h-[1px] w-full bg-gradient-to-r from-[#00FFCC]/40 to-transparent mt-2 animate-width-reveal" />
                                 )}

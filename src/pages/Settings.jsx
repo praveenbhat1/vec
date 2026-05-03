@@ -237,7 +237,7 @@ function SettingsContent() {
     };
 
     return (
-        <div className="flex h-screen w-full overflow-hidden bg-[#08080A] text-[#E5E5E7] font-inter">
+        <div className="flex h-screen bg-[#08080A] font-inter selection:bg-[#00FFCC] selection:text-black overflow-hidden relative">
             <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-[0.03]">
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,204,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,204,0.01)_1px,transparent_1px)] bg-[size:100px_100px]" />
                 <div 
@@ -247,15 +247,13 @@ function SettingsContent() {
             </div>
 
             <Sidebar />
-            <TopNavbar />
+            
+            <div className="flex-1 flex flex-col min-w-0 relative">
+                <TopNavbar />
 
-            <main
-                className={`flex-1 overflow-x-hidden overflow-y-auto transition-all duration-500 relative z-10 custom-scrollbar will-change-transform ${isSidebarOpen ? 'ml-sidebar-open' : 'ml-sidebar-closed'}`}
-                style={{
-                    marginTop: SZ.navbarH,
-                    height: `calc(100vh - ${SZ.navbarH}px)`,
-                }}
-            >
+                <main
+                    className="flex-1 overflow-x-hidden overflow-y-auto relative z-10 custom-scrollbar will-change-transform"
+                >
                 <div className="max-w-[1700px] mx-auto fluid-p">
 
                     <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between border-b border-white/5 pb-8">
@@ -597,6 +595,7 @@ function SettingsContent() {
                     </div>
                 </div>
             </main>
+            </div>
 
             <ConfirmationModal 
                 isOpen={modal.open}

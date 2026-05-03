@@ -111,9 +111,7 @@ export default function DashboardMain() {
   const { toasts, isSidebarOpen, closeSidebar, stats } = useDashboard();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    closeSidebar();
-  }, [closeSidebar]);
+  // Sidebar is managed globally by the context, no need to force it closed on mount
 
   return (
     <div className="flex h-screen bg-[#08080A] font-inter selection:bg-[#00FFCC] selection:text-black overflow-hidden relative">

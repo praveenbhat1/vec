@@ -417,3 +417,29 @@ export async function seedDatabaseIfEmpty() {
     console.error("Supabase: [SEED] Critical Error:", err);
   }
 }
+// ============================================
+// TACTICAL ACTIONS
+// ============================================
+export async function fetchTacticalActions() {
+    console.log("Supabase: [FETCH] Fetching tactical actions...");
+    const { data, error } = await supabase
+        .from('tactical_actions')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true });
+    
+    if (error) {
+        console.error("Supabase: [FETCH_ERROR] Tactical Actions:", error.message);
+        throw error;
+    }
+    return data;
+}
+
+export async function updateActionStatus(id, status) {
+    const { data, error } = await supabase
+        .from('tactical_actions')
+        .update({ status })
+        .eq('id', id);
+    if (error) throw error;
+    return data;
+}

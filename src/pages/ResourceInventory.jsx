@@ -206,7 +206,7 @@ function ResourceContent() {
     };
 
     return (
-        <div className="flex h-screen w-full overflow-hidden bg-[#08080A] text-[#E5E5E7]">
+        <div className="flex h-screen bg-[#08080A] font-inter selection:bg-[#00FFCC] selection:text-black overflow-hidden relative">
             
             {/* ── BACKGROUND ── */}
             <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
@@ -218,12 +218,13 @@ function ResourceContent() {
             </div>
 
             <Sidebar />
-            <TopNavbar />
+            
+            <div className="flex-1 flex flex-col min-w-0 relative">
+                <TopNavbar />
 
-            <main
-                className={`flex-1 overflow-y-auto overflow-x-hidden transition-all duration-300 relative z-10 custom-scrollbar ${isSidebarOpen ? 'ml-sidebar-open' : 'ml-sidebar-closed'}`}
-                style={{ marginTop: SZ.navbarH, height: `calc(100vh - ${SZ.navbarH}px)` }}
-            >
+                <main
+                    className="flex-1 overflow-y-auto overflow-x-hidden relative z-10 custom-scrollbar"
+                >
                 <div className="p-12 max-w-[1600px] mx-auto space-y-12 pb-32">
                     
                     {/* ── HEADER ── */}
@@ -432,6 +433,7 @@ function ResourceContent() {
                     </div>
                 </div>
             </main>
+            </div>
 
             {/* ── ADD STOCK MODAL ── */}
             {isAddModalOpen && (
